@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Open+Sans:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 40% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 13%;
+
+    --primary: 220 70% 22%;
+    --primary-foreground: 45 100% 96%;
+
+    --secondary: 45 90% 55%;
+    --secondary-foreground: 220 70% 15%;
+
+    --muted: 220 15% 92%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 45 90% 55%;
+    --accent-foreground: 220 70% 15%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 220 70% 22%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --navy: 220 70% 22%;
+    --navy-light: 220 55% 30%;
+    --navy-dark: 220 80% 14%;
+    --gold: 45 90% 55%;
+    --gold-light: 45 85% 70%;
+    --gold-dark: 40 80% 42%;
+    --sky: 205 75% 55%;
+    --sky-light: 205 80% 92%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(220 80% 14%), hsl(220 70% 22%), hsl(220 55% 30%));
+    --gradient-gold: linear-gradient(135deg, hsl(40 80% 42%), hsl(45 90% 55%), hsl(45 85% 70%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 20% 97%));
+
+    --shadow-card: 0 4px 24px -4px hsl(220 70% 22% / 0.08);
+    --shadow-hover: 0 8px 32px -4px hsl(220 70% 22% / 0.15);
+    --shadow-gold: 0 4px 20px -4px hsl(45 90% 55% / 0.4);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 220 40% 8%;
+    --foreground: 220 10% 92%;
+    --card: 220 35% 12%;
+    --card-foreground: 220 10% 92%;
+    --popover: 220 35% 12%;
+    --popover-foreground: 220 10% 92%;
+    --primary: 45 90% 55%;
+    --primary-foreground: 220 70% 15%;
+    --secondary: 220 55% 30%;
+    --secondary-foreground: 220 10% 92%;
+    --muted: 220 30% 18%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 45 90% 55%;
+    --accent-foreground: 220 70% 15%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 30% 20%;
+    --input: 220 30% 20%;
+    --ring: 45 90% 55%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Open Sans', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    background: linear-gradient(135deg, hsl(40 80% 42%), hsl(45 90% 55%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
