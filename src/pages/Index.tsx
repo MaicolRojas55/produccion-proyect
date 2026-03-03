@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import {
   CalendarDays,
   GraduationCap,
@@ -15,9 +15,9 @@ import {
   UserPlus,
   Smartphone,
   CheckCircle2,
-  ListOrdered,
-} from "lucide-react";
-import { Link } from "react-router-dom";
+  ListOrdered
+} from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 const Index = () => {
   return (
@@ -36,13 +36,19 @@ const Index = () => {
               </div>
               <div className="leading-tight">
                 <div className="font-heading font-black text-primary-foreground tracking-tight">
-                  Producción Proyect
+                  Coniiti
                 </div>
-                <div className="text-xs text-primary-foreground/70">Reuniones y asistencia con OTP</div>
+                <div className="text-xs text-primary-foreground/70">
+                  Reuniones y asistencia con OTP
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button asChild variant="secondary" className="hidden sm:inline-flex">
+              <Button
+                asChild
+                variant="secondary"
+                className="hidden sm:inline-flex"
+              >
                 <Link to="/agenda">
                   <BookOpen className="h-4 w-4 mr-2" />
                   Ver agenda
@@ -72,12 +78,14 @@ const Index = () => {
 
               <h1 className="font-heading font-black text-4xl md:text-6xl text-primary-foreground tracking-tight">
                 Reuniones y asistencia,
-                <span className="block text-gradient-gold">para profesores y estudiantes</span>
+                <span className="block text-gradient-gold">
+                  para profesores y estudiantes
+                </span>
               </h1>
               <p className="mt-4 text-primary-foreground/80 max-w-xl">
-                Plataforma académica sin servidor: crea reuniones, registra asistencia con QR + OTP
-                y lleva el control desde el navegador. Un solo registro por estudiante y validación
-                por conferencia.
+                Plataforma académica sin servidor: crea reuniones, registra
+                asistencia con QR + OTP y lleva el control desde el navegador.
+                Un solo registro por estudiante y validación por conferencia.
               </p>
 
               <div className="mt-7 flex flex-col sm:flex-row gap-3">
@@ -87,13 +95,19 @@ const Index = () => {
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="secondary" className="shadow-lg">
+                <Button
+                  asChild
+                  size="lg"
+                  variant="secondary"
+                  className="shadow-lg"
+                >
                   <Link to="/auth?tab=login">Ya tengo cuenta</Link>
                 </Button>
               </div>
 
               <div className="mt-6 text-xs text-primary-foreground/60">
-                Todo se guarda en tu navegador (sin backend). Ideal para prototipos y entornos controlados.
+                Todo se guarda en tu navegador (sin backend). Ideal para
+                prototipos y entornos controlados.
               </div>
             </div>
 
@@ -107,7 +121,8 @@ const Index = () => {
                     <div className="flex-1">
                       <div className="font-heading font-bold">Profesor</div>
                       <div className="text-sm text-muted-foreground">
-                        Crea reuniones, muestra QR dinámico y descarga asistencias en CSV.
+                        Crea reuniones, muestra QR dinámico y descarga
+                        asistencias en CSV.
                       </div>
                     </div>
                   </div>
@@ -121,7 +136,8 @@ const Index = () => {
                     <div className="flex-1">
                       <div className="font-heading font-bold">Estudiante</div>
                       <div className="text-sm text-muted-foreground">
-                        Registro único con OTP; agenda reuniones y valida asistencia con QR + OTP.
+                        Registro único con OTP; agenda reuniones y valida
+                        asistencia con QR + OTP.
                       </div>
                     </div>
                   </div>
@@ -136,15 +152,17 @@ const Index = () => {
       <section className="container mx-auto px-4 py-12 md:py-16">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-heading font-black text-2xl md:text-3xl text-foreground mb-4">
-            ¿Qué es Producción Proyect?
+            Inicios de Coniiti
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Es una aplicación web que permite a <strong>profesores</strong> crear reuniones o
-            conferencias y llevar un registro de asistencia mediante un código QR dinámico y un OTP
-            (código de un solo uso). Los <strong>estudiantes</strong> se registran una sola vez,
-            activan su cuenta con un OTP por correo/celular (simulado) y, en cada reunión, validan
-            su presencia escaneando el QR y escribiendo el OTP que reciben. Todo funciona en el
-            navegador, sin backend: los datos se guardan en tu dispositivo (LocalStorage).
+            CONIITI Es un espacio abierto de interacción entre actores del
+            ecosistema innovador orientado a compartir nuevas aproximaciones
+            para la transformación creativa de Colombia a través del diseño de
+            soluciones con visión de ingeniería. La Universidad Católica de
+            Colombia, en el marco de la semana de Ingeniería, desarrolló el I
+            CONGRESO INTERNACIONAL DE INNOVACIÓN Y TENDENCIAS EN INGENIERÍA –
+            CONIITI 2015 que se realizó entre el 14 y el 17 de octubre de 2015
+            en la ciudad de Bogotá.
           </p>
         </div>
       </section>
@@ -156,8 +174,8 @@ const Index = () => {
             Cómo se maneja el flujo de reuniones
           </h2>
           <p className="text-center text-muted-foreground max-w-2xl mx-auto mb-12">
-            Así funciona nuestro sistema para profesores y estudiantes: desde el registro hasta la
-            asistencia por conferencia.
+            Así funciona nuestro sistema para profesores y estudiantes: desde el
+            registro hasta la asistencia por conferencia.
           </p>
 
           <div className="grid lg:grid-cols-2 gap-10 items-start">
@@ -168,8 +186,12 @@ const Index = () => {
                   <GraduationCap className="h-6 w-6 text-secondary" />
                 </div>
                 <div>
-                  <h3 className="font-heading font-black text-xl">Rol Profesor</h3>
-                  <p className="text-sm text-muted-foreground">Crear reuniones y ver quién asistió</p>
+                  <h3 className="font-heading font-black text-xl">
+                    Rol Profesor
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Crear reuniones y ver quién asistió
+                  </p>
                 </div>
               </div>
               <ol className="space-y-4">
@@ -178,9 +200,12 @@ const Index = () => {
                     1
                   </span>
                   <div>
-                    <span className="font-heading font-semibold">Registro o inicio de sesión</span>
+                    <span className="font-heading font-semibold">
+                      Registro o inicio de sesión
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      Te registras como profesor (o inicias sesión) y entras al dashboard.
+                      Te registras como profesor (o inicias sesión) y entras al
+                      dashboard.
                     </p>
                   </div>
                 </li>
@@ -189,9 +214,12 @@ const Index = () => {
                     2
                   </span>
                   <div>
-                    <span className="font-heading font-semibold">Crear reuniones</span>
+                    <span className="font-heading font-semibold">
+                      Crear reuniones
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      Desde el dashboard creas reuniones: título, ubicación, fecha y hora de inicio y fin.
+                      Desde el dashboard creas reuniones: título, ubicación,
+                      fecha y hora de inicio y fin.
                     </p>
                   </div>
                 </li>
@@ -200,10 +228,14 @@ const Index = () => {
                     3
                   </span>
                   <div>
-                    <span className="font-heading font-semibold">QR dinámico</span>
+                    <span className="font-heading font-semibold">
+                      QR dinámico
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      En la hora de la reunión, abres &quot;QR dinámico&quot; para esa reunión. Se muestra un
-                      código que cambia cada poco (válido 60 s). Los estudiantes lo escanean o pegan en la app.
+                      En la hora de la reunión, abres &quot;QR dinámico&quot;
+                      para esa reunión. Se muestra un código que cambia cada
+                      poco (válido 60 s). Los estudiantes lo escanean o pegan en
+                      la app.
                     </p>
                   </div>
                 </li>
@@ -212,10 +244,13 @@ const Index = () => {
                     4
                   </span>
                   <div>
-                    <span className="font-heading font-semibold">Métricas y exportar</span>
+                    <span className="font-heading font-semibold">
+                      Métricas y exportar
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      Ves cuántas asistencias hay por reunión y cuántos estudiantes únicos. Puedes ver
-                      detalle y descargar un CSV con las asistencias.
+                      Ves cuántas asistencias hay por reunión y cuántos
+                      estudiantes únicos. Puedes ver detalle y descargar un CSV
+                      con las asistencias.
                     </p>
                   </div>
                 </li>
@@ -229,8 +264,12 @@ const Index = () => {
                   <Users className="h-6 w-6 text-foreground" />
                 </div>
                 <div>
-                  <h3 className="font-heading font-black text-xl">Rol Estudiante</h3>
-                  <p className="text-sm text-muted-foreground">Registro único y asistencia con OTP</p>
+                  <h3 className="font-heading font-black text-xl">
+                    Rol Estudiante
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Registro único y asistencia con OTP
+                  </p>
                 </div>
               </div>
               <ol className="space-y-4">
@@ -239,10 +278,13 @@ const Index = () => {
                     1
                   </span>
                   <div>
-                    <span className="font-heading font-semibold">Registro único (solo una vez)</span>
+                    <span className="font-heading font-semibold">
+                      Registro único (solo una vez)
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      Te registras con nombre, email, celular y contraseña. Recibes un OTP (simulado por
-                      WhatsApp/SMS) para activar la cuenta. Tras activar, ya no vuelves a llenar formularios.
+                      Te registras con nombre, email, celular y contraseña.
+                      Recibes un OTP (simulado por WhatsApp/SMS) para activar la
+                      cuenta. Tras activar, ya no vuelves a llenar formularios.
                     </p>
                   </div>
                 </li>
@@ -251,10 +293,13 @@ const Index = () => {
                     2
                   </span>
                   <div>
-                    <span className="font-heading font-semibold">Agendar reuniones</span>
+                    <span className="font-heading font-semibold">
+                      Agendar reuniones
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      En la vista estudiante ves las reuniones disponibles. Puedes marcar &quot;Agendar&quot; en
-                      las que quieras asistir; aparecen en &quot;Mis agendadas&quot;.
+                      En la vista estudiante ves las reuniones disponibles.
+                      Puedes marcar &quot;Agendar&quot; en las que quieras
+                      asistir; aparecen en &quot;Mis agendadas&quot;.
                     </p>
                   </div>
                 </li>
@@ -263,11 +308,15 @@ const Index = () => {
                     3
                   </span>
                   <div>
-                    <span className="font-heading font-semibold">Escanear QR en la reunión</span>
+                    <span className="font-heading font-semibold">
+                      Escanear QR en la reunión
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      Cuando el profesor muestra el QR, usas &quot;Escanear QR (pegar)&quot; y pegas el código
-                      (o lo escaneas si fuera un QR real). El código debe estar dentro de la ventana de
-                      tiempo de la reunión y no haber registrado asistencia antes.
+                      Cuando el profesor muestra el QR, usas &quot;Escanear QR
+                      (pegar)&quot; y pegas el código (o lo escaneas si fuera un
+                      QR real). El código debe estar dentro de la ventana de
+                      tiempo de la reunión y no haber registrado asistencia
+                      antes.
                     </p>
                   </div>
                 </li>
@@ -276,10 +325,13 @@ const Index = () => {
                     4
                   </span>
                   <div>
-                    <span className="font-heading font-semibold">OTP y validar asistencia</span>
+                    <span className="font-heading font-semibold">
+                      OTP y validar asistencia
+                    </span>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      Se genera un OTP de 6 dígitos (válido 90 s, un solo uso). Lo ingresas en la app;
-                      si es correcto, tu asistencia queda registrada para esa conferencia.
+                      Se genera un OTP de 6 dígitos (válido 90 s, un solo uso).
+                      Lo ingresas en la app; si es correcto, tu asistencia queda
+                      registrada para esa conferencia.
                     </p>
                   </div>
                 </li>
@@ -296,14 +348,46 @@ const Index = () => {
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { icon: QrCode, title: "QR dinámico", desc: "Código por reunión que cambia en el tiempo para mayor seguridad." },
-            { icon: ClipboardCheck, title: "OTP contextual", desc: "Un código por conferencia, válido poco tiempo y de un solo uso." },
-            { icon: FileDown, title: "Exportar CSV", desc: "El profesor descarga la lista de asistencias por reunión." },
-            { icon: UserPlus, title: "Registro único", desc: "El estudiante se registra una vez y activa con OTP." },
-            { icon: Smartphone, title: "Sin backend", desc: "Todo en el navegador (LocalStorage); ideal para demos." },
-            { icon: CheckCircle2, title: "Ventana de tiempo", desc: "Solo se valida asistencia dentro del horario de la reunión." },
-            { icon: ListOrdered, title: "Mis agendadas", desc: "El estudiante ve solo las reuniones que agendó." },
-            { icon: ShieldCheck, title: "Por dispositivo", desc: "El OTP se asocia al dispositivo para evitar compartir códigos." },
+            {
+              icon: QrCode,
+              title: 'QR dinámico',
+              desc: 'Código por reunión que cambia en el tiempo para mayor seguridad.'
+            },
+            {
+              icon: ClipboardCheck,
+              title: 'OTP contextual',
+              desc: 'Un código por conferencia, válido poco tiempo y de un solo uso.'
+            },
+            {
+              icon: FileDown,
+              title: 'Exportar CSV',
+              desc: 'El profesor descarga la lista de asistencias por reunión.'
+            },
+            {
+              icon: UserPlus,
+              title: 'Registro único',
+              desc: 'El estudiante se registra una vez y activa con OTP.'
+            },
+            {
+              icon: Smartphone,
+              title: 'Sin backend',
+              desc: 'Todo en el navegador (LocalStorage); ideal para demos.'
+            },
+            {
+              icon: CheckCircle2,
+              title: 'Ventana de tiempo',
+              desc: 'Solo se valida asistencia dentro del horario de la reunión.'
+            },
+            {
+              icon: ListOrdered,
+              title: 'Mis agendadas',
+              desc: 'El estudiante ve solo las reuniones que agendó.'
+            },
+            {
+              icon: ShieldCheck,
+              title: 'Por dispositivo',
+              desc: 'El OTP se asocia al dispositivo para evitar compartir códigos.'
+            }
           ].map(({ icon: Icon, title, desc }) => (
             <Card key={title} className="p-5">
               <div className="flex items-start gap-3">
@@ -312,7 +396,9 @@ const Index = () => {
                 </div>
                 <div>
                   <div className="font-heading font-bold">{title}</div>
-                  <div className="text-sm text-muted-foreground mt-0.5">{desc}</div>
+                  <div className="text-sm text-muted-foreground mt-0.5">
+                    {desc}
+                  </div>
                 </div>
               </div>
             </Card>
@@ -327,7 +413,8 @@ const Index = () => {
             ¿Listo para probar?
           </h2>
           <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-            Crea una cuenta como profesor o estudiante y recorre el flujo de reuniones y asistencia.
+            Crea una cuenta como profesor o estudiante y recorre el flujo de
+            reuniones y asistencia.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button asChild size="lg">
@@ -343,7 +430,7 @@ const Index = () => {
         </div>
       </section>
     </div>
-  );
-};
+  )
+}
 
-export default Index;
+export default Index
