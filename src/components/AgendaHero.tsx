@@ -1,18 +1,12 @@
 import { Calendar, MapPin, Globe } from "lucide-react";
-import heroImage from "@/assets/hero-agenda.jpg";
 
 const AgendaHero = () => {
   return (
     <section className="relative overflow-hidden">
-      {/* Background image */}
-      <div className="absolute inset-0">
-        <img
-          src={heroImage}
-          alt="CONIITI 2025 Background"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-navy-dark/70" />
-      </div>
+      {/* Background */}
+      <div className="absolute inset-0 bg-[var(--gradient-hero)]" />
+      <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_20%_10%,hsl(var(--gold))_0%,transparent_45%),radial-gradient(circle_at_80%_30%,hsl(var(--sky))_0%,transparent_45%),radial-gradient(circle_at_50%_100%,hsl(var(--navy-light))_0%,transparent_55%)]" />
+      <div className="absolute inset-0 bg-navy-dark/55" />
 
       <div className="relative z-10 container mx-auto px-4 py-20 md:py-28 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/20 border border-secondary/40 mb-6">
