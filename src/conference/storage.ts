@@ -1,8 +1,9 @@
-import type { Attendance, Conference, StudentAgendaItem } from "./types";
+import type { Attendance, Conference, StudentAgendaItem, AgendaInscription } from "./types";
 
 const CONF_KEY = "pp_conferences_v1";
 const ATT_KEY = "pp_attendance_v1";
 const AGENDA_KEY = "pp_student_agenda_v1";
+const AGENDA_INSCRIPTIONS_KEY = "pp_agenda_inscriptions_v1";
 
 function safeParseJson<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -38,5 +39,14 @@ export function loadStudentAgenda(): StudentAgendaItem[] {
 
 export function saveStudentAgenda(items: StudentAgendaItem[]) {
   localStorage.setItem(AGENDA_KEY, JSON.stringify(items));
+}
+
+export function loadAgendaInscriptions(): AgendaInscription[] {
+  const x = safeParseJson<AgendaInscription[]>(localStorage.getItem(AGENDA_INSCRIPTIONS_KEY));
+  return Array.isArray(x) ? x : [];
+}
+
+export function saveAgendaInscriptions(items: AgendaInscription[]) {
+  localStorage.setItem(AGENDA_INSCRIPTIONS_KEY, JSON.stringify(items));
 }
 

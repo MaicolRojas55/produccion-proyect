@@ -85,6 +85,7 @@ export const agendaData: DaySchedule[] = [
         location: "Auditorio Principal",
         type: "conference",
         track: "Transformación Digital",
+        capacity: 100,
       },
       {
         id: "d1-6",
@@ -104,6 +105,7 @@ export const agendaData: DaySchedule[] = [
         type: "conference",
         track: "Ponencias",
         description: "Presentación paralela de artículos aprobados en múltiples tracks temáticos.",
+        capacity: 60,
       },
       {
         id: "d1-8",
@@ -162,6 +164,7 @@ export const agendaData: DaySchedule[] = [
         location: "Salas A, B y C",
         type: "conference",
         track: "Ponencias",
+        capacity: 60,
       },
       {
         id: "d2-4",
@@ -202,6 +205,7 @@ export const agendaData: DaySchedule[] = [
         type: "panel",
         track: "Emprendimiento",
         description: "Mesa redonda con emprendedores y académicos sobre las oportunidades de innovación.",
+        capacity: 80,
       },
       {
         id: "d2-8",
@@ -212,6 +216,7 @@ export const agendaData: DaySchedule[] = [
         location: "Salas A, B y C",
         type: "conference",
         track: "Ponencias",
+        capacity: 60,
       },
       {
         id: "d2-9",
@@ -258,6 +263,7 @@ export const agendaData: DaySchedule[] = [
         location: "Salas A y B",
         type: "conference",
         track: "Ponencias",
+        capacity: 40,
       },
       {
         id: "d3-4",

@@ -23,3 +23,12 @@ export interface StudentAgendaItem {
   createdAt: string;
 }
 
+/** Inscripción de un usuario a una sesión de la agenda (agendaData). */
+export interface AgendaInscription {
+  id: string;
+  userId: string;
+  sessionId: string;
+  code?: string;
+  createdAt: string;
+}
+

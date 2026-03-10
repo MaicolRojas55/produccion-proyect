@@ -1,50 +1,59 @@
-import { useMemo, useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CalendarDays, GraduationCap, LogIn, UserPlus } from "lucide-react";
-import { useAuth } from "@/auth/useAuth";
-import type { Role } from "@/auth/types";
+import { useMemo, useState } from 'react'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { ArrowLeft, CalendarDays, LogIn, UserPlus } from 'lucide-react'
+import { useAuth } from '@/auth/useAuth'
+import { isStaffRole } from '@/auth/types'
 
 function useQueryTab() {
-  const location = useLocation();
-  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const tab = params.get("tab");
-  return tab === "register" ? "register" : "login";
+  const location = useLocation()
+  const params = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search]
+  )
+  const tab = params.get('tab')
+  return tab === 'register' ? 'register' : 'login'
 }
 
 export default function Auth() {
-  const navigate = useNavigate();
-  const location = useLocation() as unknown as { state?: { from?: { pathname?: string } } };
-  const { login, register, requestActivationOtp, activateAccount } = useAuth();
+  const navigate = useNavigate()
+  const location = useLocation() as unknown as {
+    state?: { from?: { pathname?: string } }
+  }
+  const { login, register, requestActivationOtp, activateAccount } = useAuth()
 
-  const [tab, setTab] = useState<"login" | "register">(useQueryTab());
+  const [tab, setTab] = useState<'login' | 'register'>(useQueryTab())
 
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
 
-  const [nombre, setNombre] = useState("");
-  const [email, setEmail] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("estudiante");
-  const [pendingActivation, setPendingActivation] = useState<{ userId: string; otpSimulado: string } | null>(null);
-  const [otp, setOtp] = useState("");
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [otpError, setOtpError] = useState<string | null>(null);
-  const [registerInfo, setRegisterInfo] = useState<string | null>(null);
+  const [nombre, setNombre] = useState('')
+  const [email, setEmail] = useState('')
+  const [telefono, setTelefono] = useState('')
+  const [password, setPassword] = useState('')
+  const [pendingActivation, setPendingActivation] = useState<{
+    userId: string
+    otpSimulado: string
+  } | null>(null)
+  const [otp, setOtp] = useState('')
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [otpError, setOtpError] = useState<string | null>(null)
+  const [registerInfo, setRegisterInfo] = useState<string | null>(null)
 
-  const goAfterAuth = (isProfessor: boolean) => {
-    const to = location.state?.from?.pathname && location.state.from.pathname !== "/auth"
-      ? location.state.from.pathname
-      : isProfessor ? "/dashboard" : "/student";
-    navigate(to);
-  };
+  const goAfterAuth = (isStaff: boolean) => {
+    const to =
+      location.state?.from?.pathname && location.state.from.pathname !== '/auth'
+        ? location.state.from.pathname
+        : isStaff
+          ? '/dashboard'
+          : '/student'
+    navigate(to)
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,23 +73,32 @@ export default function Auth() {
                   <CalendarDays className="h-4 w-4" />
                 </div>
                 <div>
-                  <div className="font-heading font-black text-lg leading-tight">Acceso</div>
+                  <div className="font-heading font-black text-lg leading-tight">
+                    Acceso
+                  </div>
                   <div className="text-sm text-muted-foreground leading-tight">
                     Sin backend, guardado en tu navegador
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Sólo pueden crearse cuentas de usuarios registrados; web
+                    master y super admin se deben definir manualmente.
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Profesor</Badge>
-                <Badge variant="outline">Estudiante</Badge>
+                <Badge variant="secondary">Web Master (preconfigurado)</Badge>
+                <Badge variant="outline">Usuario Registrado</Badge>
               </div>
             </div>
           </div>
 
           <div className="lg:col-span-7">
             <Card className="p-6 shadow-[var(--shadow-card)]">
-              <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")}>
+              <Tabs
+                value={tab}
+                onValueChange={(v) => setTab(v as 'login' | 'register')}
+              >
                 <TabsList className="grid grid-cols-2 w-full">
                   <TabsTrigger value="login" className="gap-2">
                     <LogIn className="h-4 w-4" /> Iniciar sesión
@@ -114,10 +132,16 @@ export default function Auth() {
 
                     <Button
                       onClick={() => {
-                        setLoginError(null);
-                        const res = login({ email: loginEmail, password: loginPassword });
-                        if (res.ok) goAfterAuth(res.user.role === "profesor");
-                        else setLoginError("Credenciales inválidas o cuenta no activada (estudiante).");
+                        setLoginError(null)
+                        const res = login({
+                          email: loginEmail,
+                          password: loginPassword
+                        })
+                        if (res.ok) goAfterAuth(isStaffRole(res.user.role))
+                        else
+                          setLoginError(
+                            'Credenciales inválidas o cuenta no activada (usuario registrado).'
+                          )
                       }}
                       className="w-full"
                     >
@@ -169,58 +193,63 @@ export default function Auth() {
                       />
                     </div>
 
-                    <div className="grid gap-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Rol</Label>
-                        <div className="text-xs text-muted-foreground">Afecta el calendario</div>
-                      </div>
-                      <RadioGroup
-                        value={role}
-                        onValueChange={(v) => setRole(v as Role)}
-                        className="grid sm:grid-cols-2 gap-3"
-                      >
-                        <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50">
-                          <RadioGroupItem value="profesor" className="mt-1" />
-                          <div className="flex-1">
-                            <div className="font-heading font-bold flex items-center gap-2">
-                              <GraduationCap className="h-4 w-4 text-secondary" />
-                              Profesor
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              Crea y administra eventos.
-                            </div>
-                          </div>
-                        </label>
-                        <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50">
-                          <RadioGroupItem value="estudiante" className="mt-1" />
-                          <div className="flex-1">
-                            <div className="font-heading font-bold flex items-center gap-2">
-                              <CalendarDays className="h-4 w-4" />
-                              Estudiante
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              Revisa eventos y confirma asistencia.
-                            </div>
-                          </div>
-                        </label>
-                      </RadioGroup>
+                    {/* role fixed to Usuario Registrado; not selectable */}
+                    <div className="text-sm text-muted-foreground">
+                      Rol asignado: <strong>Usuario Registrado</strong>
                     </div>
 
                     <Button
                       onClick={() => {
-                        setRegisterInfo(null);
-                        setOtpError(null);
-                        const res = register({ nombre, email, telefono, password, role });
-                        if (!res.ok) return;
-                        if (role === "profesor") {
-                          goAfterAuth(true);
-                          return;
-                        }
-                        // Estudiante: requiere activación OTP (simulada)
-                        const otpRes = requestActivationOtp(res.userId);
-                        if (otpRes.ok) {
-                          setPendingActivation({ userId: res.userId, otpSimulado: otpRes.otpSimulado });
-                          setRegisterInfo("Cuenta creada. Actívala con el OTP para entrar.");
+                        setRegisterInfo(null)
+                        setOtpError(null)
+
+                        try {
+                          // Validaciones básicas
+                          if (!nombre.trim()) {
+                            setRegisterInfo('El nombre es requerido')
+                            return
+                          }
+                          if (!email.trim()) {
+                            setRegisterInfo('El email es requerido')
+                            return
+                          }
+                          if (!password.trim()) {
+                            setRegisterInfo('La contraseña es requerida')
+                            return
+                          }
+
+                          const res = register({
+                            nombre,
+                            email,
+                            telefono,
+                            password
+                          })
+                          if (!res.ok) {
+                            if (res.reason === 'EMAIL_TAKEN') {
+                              setRegisterInfo('Este email ya está registrado')
+                            }
+                            return
+                          }
+                          // Usuario registrado: requiere activación OTP (simulada)
+                          const otpRes = requestActivationOtp(res.userId)
+                          if (otpRes.ok) {
+                            setPendingActivation({
+                              userId: res.userId,
+                              otpSimulado: otpRes.otpSimulado
+                            })
+                            setRegisterInfo(
+                              'Cuenta creada. Actívala con el OTP para entrar.'
+                            )
+                          } else {
+                            setRegisterInfo(
+                              'Error al generar OTP. Intenta de nuevo.'
+                            )
+                          }
+                        } catch (error) {
+                          console.error('Error en registro:', error)
+                          setRegisterInfo(
+                            'Error inesperado. Revisa la consola para más detalles.'
+                          )
                         }
                       }}
                       className="w-full"
@@ -228,31 +257,53 @@ export default function Auth() {
                       Crear cuenta
                     </Button>
                     {registerInfo && (
-                      <div className="text-sm text-muted-foreground">{registerInfo}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {registerInfo}
+                      </div>
                     )}
 
                     {pendingActivation && (
                       <div className="rounded-lg border border-border p-4 bg-muted/30">
-                        <div className="text-sm font-semibold">Activación (OTP simulado)</div>
+                        <div className="text-sm font-semibold">
+                          Activación (OTP simulado)
+                        </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          Enviado por WhatsApp/SMS (simulado): <span className="font-mono">{pendingActivation.otpSimulado}</span>
+                          Enviado por WhatsApp/SMS (simulado):{' '}
+                          <span className="font-mono">
+                            {pendingActivation.otpSimulado}
+                          </span>
                         </div>
                         <div className="grid gap-2 mt-3">
                           <Label htmlFor="otp">Ingresa el OTP</Label>
-                          <Input id="otp" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456" />
+                          <Input
+                            id="otp"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            placeholder="123456"
+                          />
                           <Button
                             variant="secondary"
                             onClick={() => {
-                              setOtpError(null);
-                              const ok = activateAccount({ userId: pendingActivation.userId, otp }).ok;
-                              if (ok) goAfterAuth(false);
-                              else setOtpError("OTP inválido o expirado.");
+                              setOtpError(null)
+                              try {
+                                const ok = activateAccount({
+                                  userId: pendingActivation.userId,
+                                  otp
+                                }).ok
+                                if (ok) goAfterAuth(false)
+                                else setOtpError('OTP inválido o expirado.')
+                              } catch (error) {
+                                console.error('Error en activación:', error)
+                                setOtpError('Error inesperado en activación.')
+                              }
                             }}
                           >
                             Activar y entrar
                           </Button>
                           {otpError && (
-                            <div className="text-sm text-red-600">{otpError}</div>
+                            <div className="text-sm text-red-600">
+                              {otpError}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -265,6 +316,5 @@ export default function Auth() {
         </div>
       </div>
     </div>
-  );
+  )
 }
-

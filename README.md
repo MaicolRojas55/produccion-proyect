@@ -1,73 +1,69 @@
-# Welcome to your Lovable project
+# Producción Proyect / CONIITI
 
-## Project info
+Proyecto dividido en **frontend** (React + Vite) y **backend** (Python + FastAPI). El backend está pensado para uvicorn, gunicorn y despliegue en Azure.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Estructura
 
-## How can I edit this code?
+```
+produccion-proyect/
+├── frontend/     # React, TypeScript, Vite, Tailwind, shadcn-ui
+├── backend/      # Python, FastAPI, uvicorn, gunicorn
+├── README.md
+└── .gitignore
+```
 
-There are several ways of editing your application.
+## Frontend
 
-**Use Lovable**
+- **Tecnologías:** Vite, React, TypeScript, Tailwind CSS, shadcn-ui.
+- **Importante:** el frontend debe ejecutarse desde la carpeta `frontend` (o con `npm run dev` desde la raíz). Si abres el `index.html` directamente (file://) o desde otra ruta, la pantalla puede quedar en blanco.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+**Opción A — desde la raíz del repo:**
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+**Opción B — desde la carpeta frontend:**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-**Use GitHub Codespaces**
+Abre **http://localhost:8080** en el navegador (no uses file:// ni otro puerto).
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- **Build:** `npm run build` (genera `frontend/dist`).
 
-## What technologies are used for this project?
+## Backend
 
-This project is built with:
+- **Tecnologías:** Python, FastAPI, uvicorn, gunicorn.
+- **Desarrollo:** servidor con recarga con uvicorn.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
 
-## How can I deploy this project?
+API docs: http://localhost:8000/docs
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- **Producción (gunicorn + uvicorn):**
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+cd backend
+gunicorn main:app -c gunicorn.conf.py
+```
 
-Yes, you can!
+- **Azure:** configurar el comando de inicio del App Service para que ejecute gunicorn (desde la carpeta `backend` o con el módulo `backend.main:app`). Ver `backend/README.md`.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Resumen de comandos
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+| Dónde   | Comando                          | Propósito        |
+|--------|-----------------------------------|------------------|
+| frontend | `npm run dev`                   | App React en dev |
+| frontend | `npm run build`                 | Build estático   |
+| backend  | `uvicorn main:app --reload ...` | API en dev       |
+| backend  | `gunicorn main:app -c gunicorn.conf.py` | API en producción |
