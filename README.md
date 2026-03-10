@@ -1,69 +1,83 @@
-# Producción Proyect / CONIITI
+# Producción Proyect - Frontend
 
-Proyecto dividido en **frontend** (React + Vite) y **backend** (Python + FastAPI). El backend está pensado para uvicorn, gunicorn y despliegue en Azure.
+Este proyecto contiene el frontend (interfaz de usuario) del sistema, desarrollado con **React**, **Vite**, **TypeScript** y **Tailwind CSS**. Además, utiliza herramientas y bibliotecas modernas para ofrecer una experiencia rápida, robusta y escalable.
 
-## Estructura
+## 🚀 Tecnologías Principales
 
-```
+- **Framework:** [React 18](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Lenguaje:** [TypeScript](https://www.typescriptlang.org/)
+- **Estilos y UI:** [Tailwind CSS](https://tailwindcss.com/) y componentes de [shadcn/ui](https://ui.shadcn.com/) (basado en Radix UI).
+- **Rutas:** [React Router v6](https://reactrouter.com/)
+- **Fetch de Datos:** [TanStack React Query](https://tanstack.com/query/latest)
+- **Formularios:** [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/)
+- **Gráficos:** [Recharts](https://recharts.org/)
+- **Testing:** [Vitest](https://vitest.dev/) y React Testing Library
+
+## 📦 Estructura del Proyecto
+
+Aunque la estructura puede ir creciendo, a grandes rasgos encontrarás:
+
+```text
 produccion-proyect/
-├── frontend/     # React, TypeScript, Vite, Tailwind, shadcn-ui
-├── backend/      # Python, FastAPI, uvicorn, gunicorn
-├── README.md
-└── .gitignore
+├── public/              # Archivos estáticos públicos (favicon, etc.)
+├── src/
+│   ├── components/      # Componentes reutilizables (ej. componentes UI de shadcn)
+│   ├── lib/             # Utilidades genéricas (ej. utils.ts para tailwind-merge)
+│   ├── pages/           # Vistas y Páginas correspondientes a las rutas (opcional)
+│   ├── hooks/           # Custom hooks de React
+│   ├── App.tsx          # Componente principal de la aplicación
+│   ├── main.tsx         # Punto de entrada de la aplicación
+│   └── index.css        # Estilos globales y capas de Tailwind
+├── package.json         # Dependencias y scripts
+├── tailwind.config.ts   # Configuración de Tailwind CSS
+├── vite.config.ts       # Configuración de Vite
+└── vitest.config.ts     # Configuración para pruebas
 ```
 
-## Frontend
+## 🛠️ Instalación y Configuración
 
-- **Tecnologías:** Vite, React, TypeScript, Tailwind CSS, shadcn-ui.
-- **Importante:** el frontend debe ejecutarse desde la carpeta `frontend` (o con `npm run dev` desde la raíz). Si abres el `index.html` directamente (file://) o desde otra ruta, la pantalla puede quedar en blanco.
+Sigue estos pasos para levantar el entorno de desarrollo local:
 
-**Opción A — desde la raíz del repo:**
+1. **Clonar/Navegar al repositorio/carpeta:**
+   Asegúrate de estar en el directorio raíz del proyecto (`produccion-proyect`).
 
-```bash
-npm run dev
-```
+2. **Instalar dependencias:**
+   Es recomendable usar `npm` (o `bun`, ya que existe un archivo `bun.lockb` en la raíz).
+   ```bash
+   npm install
+   # o si usas bun:
+   bun install
+   ```
 
-**Opción B — desde la carpeta frontend:**
+3. **Ejecutar el servidor de desarrollo:**
+   ```bash
+   npm run dev
+   # o bien:
+   bun run dev
+   ```
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+   El servidor iniciará, usualmente en la dirección [http://localhost:5173](http://localhost:5173). La recarga en caliente (HMR) está habilitada por defecto.
 
-Abre **http://localhost:8080** en el navegador (no uses file:// ni otro puerto).
+## 📜 Scripts Disponibles
 
-- **Build:** `npm run build` (genera `frontend/dist`).
+En el directorio del proyecto puedes ejecutar los siguientes comandos:
 
-## Backend
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Inicia el servidor de desarrollo local usando Vite. |
+| `npm run build` | Construye la aplicación optimizada para producción (en la carpeta `dist`). |
+| `npm run preview` | Levanta un servidor para previsualizar la compilación local de producción. |
+| `npm run lint` | Analiza el código buscando errores de sintaxis y formato con ESLint. |
+| `npm run test` | Ejecuta las pruebas unitarias usando Vitest. |
+| `npm run test:watch` | Ejecuta las pruebas en modo observador o watch. |
 
-- **Tecnologías:** Python, FastAPI, uvicorn, gunicorn.
-- **Desarrollo:** servidor con recarga con uvicorn.
+## 🌐 Conexión con el Backend
 
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+Este frontend está diseñado para consumir la API de backend (habitualmente desarrollada en FastAPI/Python para este proyecto). 
+Asegúrate de que el backend esté corriendo y sea accesible para que características como la autenticación o la carga de datos funcionen correctamente.
 
-API docs: http://localhost:8000/docs
+> **Nota para configuración de entornos:** Puedes configurar y centralizar la URL base de tu API usando variables de entorno (`.env`), por ejemplo:
+> `VITE_API_BASE_URL="http://localhost:8000"`
 
-- **Producción (gunicorn + uvicorn):**
-
-```bash
-cd backend
-gunicorn main:app -c gunicorn.conf.py
-```
-
-- **Azure:** configurar el comando de inicio del App Service para que ejecute gunicorn (desde la carpeta `backend` o con el módulo `backend.main:app`). Ver `backend/README.md`.
-
-## Resumen de comandos
-
-| Dónde   | Comando                          | Propósito        |
-|--------|-----------------------------------|------------------|
-| frontend | `npm run dev`                   | App React en dev |
-| frontend | `npm run build`                 | Build estático   |
-| backend  | `uvicorn main:app --reload ...` | API en dev       |
-| backend  | `gunicorn main:app -c gunicorn.conf.py` | API en producción |
+---
+**Desarrollado y mantenido para el sistema de Producción y Gestión.**
