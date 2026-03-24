@@ -14,7 +14,7 @@ describe('BotonRegistro - Componente CONIITI', () => {
     render(<BotonRegistro />);
     const boton = screen.getByTestId('boton-registro');
     expect(boton.textContent).toBeTruthy();
-    expect(boton.textContent).toContain('CONIITI');
+    expect(boton.textContent).toContain('PRUEBA ERROR');
   });
 
   it('debe ser un elemento de tipo botón', () => {
