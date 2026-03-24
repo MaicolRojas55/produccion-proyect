@@ -87,8 +87,8 @@ export default function Auth() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Web Master (preconfigurado)</Badge>
-                <Badge variant="outline">Usuario Registrado</Badge>
+                <Badge variant="secondary">Web Master (preconfigurado)</Badge>
+                <Badge variant="outline">Usuario Registrado</Badge>
               </div>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function Auth() {
                             password
                           })
                           if (!res.ok) {
-                            if (res.reason === 'EMAIL_TAKEN') {
+                            if ('reason' in res && res.reason === 'EMAIL_TAKEN') {
                               setRegisterInfo('Este email ya está registrado')
                             }
                             return
