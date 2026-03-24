@@ -169,7 +169,7 @@ export default function ProfessorDashboard() {
             <div className="flex items-center gap-2">
             <div className="leading-tight">
               <div className="font-heading font-black">
-                {user.role === 'web_master'
+                {user.role === 'super_admin'
                   ? 'Panel reuniones (pruebas)'
                   : 'Dashboard Web Master'}
               </div>
