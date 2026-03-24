@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { agendaData } from '@/data/agendaData'
-import AgendaHero from '@/components/AgendaHero'
-import DayTabContent from '@/components/DayTabContent'
-import { AppNavbar } from '@/components/AppNavbar'
+import AgendaHero from '@/components/shared/AgendaHero'
+import DayTabContent from '@/components/shared/DayTabContent'
+import { AppNavbar } from '@/components/layout/AppNavbar'
 import {
   Select,
   SelectContent,
@@ -19,19 +19,19 @@ import {
 import { Mail, MapPin, Phone, QrCode, Copy, Clock, Filter, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/auth/useAuth'
-import { isRegisteredUserRole } from '@/auth/types'
+import { useAuth } from '@/features/auth/useAuth'
+import { isRegisteredUserRole } from '@/features/auth/types'
 import {
   loadAgendaInscriptions,
   saveAgendaInscriptions
-} from '@/conference/storage'
-import type { AgendaInscription } from '@/conference/types'
+} from '@/features/conference/storage'
+import type { AgendaInscription } from '@/features/conference/types'
 import {
   getStudentQrPayloadForConference,
   isQrWindowOpen,
   minutesUntilQrOpens
-} from '@/studentQr/studentQr'
-import type { User } from '@/auth/types'
+} from '@/features/student-qr/studentQr'
+import type { User } from '@/features/auth/types'
 
 function newId() {
   const c = crypto as unknown as { randomUUID?: () => string }

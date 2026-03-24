@@ -18,7 +18,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { AppNavbar } from '@/components/AppNavbar'
+import { AppNavbar } from '@/components/layout/AppNavbar'
 import { useCountdown } from '@/hooks/use-countdown'
 /** Fecha y hora de inicio del evento (inicio del congreso). El contador corre hacia esta fecha. */
 const EVENT_DATE = new Date('2026-10-01T08:00:00')

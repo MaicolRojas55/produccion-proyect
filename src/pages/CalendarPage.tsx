@@ -21,9 +21,9 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { CalendarDays, LogOut, Plus, Users } from 'lucide-react'
-import { useAuth } from '@/auth/useAuth'
-import { loadEvents, saveEvents } from '@/calendar/storage'
-import type { Audience, CalendarEvent } from '@/calendar/types'
+import { useAuth } from '@/features/auth/useAuth'
+import { loadEvents, saveEvents } from '@/features/calendar/storage'
+import type { Audience, CalendarEvent } from '@/features/calendar/types'
 
 function ymd(d: Date) {
   const yyyy = d.getFullYear()

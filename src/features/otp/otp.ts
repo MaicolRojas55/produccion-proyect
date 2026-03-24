@@ -1,4 +1,4 @@
-import { getDeviceId } from "@/device/device";
+import { getDeviceId } from "@/features/device/device";
 import { loadOtpRecords, saveOtpRecords } from "./storage";
 import type { OtpPurpose, OtpRecord } from "./types";
 

@@ -7,8 +7,8 @@ import {
   saveSession,
   saveUsers
 } from './storage'
-import { getDeviceId } from '@/device/device'
-import { issueOtp, verifyAndConsumeOtp } from '@/otp/otp'
+import { getDeviceId } from '@/features/device/device'
+import { issueOtp, verifyAndConsumeOtp } from '@/features/otp/otp'
 
 type LoginInput = {
   email: string

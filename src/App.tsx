@@ -6,8 +6,8 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { ErrorBoundary } from "@/ErrorBoundary";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import { AuthProvider } from "@/auth/AuthContext";
-import { RequireAuth } from "@/auth/RequireAuth";
+import { AuthProvider } from "@/features/auth/AuthContext";
+import { RequireAuth } from "@/features/auth/RequireAuth";
 import Auth from "./pages/Auth";
 import CalendarPage from "./pages/CalendarPage";
 import Agenda from "./pages/Agenda";
@@ -65,8 +65,8 @@ const router = createBrowserRouter(
 );
 
 import { useEffect } from "react";
-import { loadUsers, saveUsers } from "@/auth/storage";
-import type { User } from "@/auth/types";
+import { loadUsers, saveUsers } from "@/features/auth/storage";
+import type { User } from "@/features/auth/types";
 
 const App = () => {
   // Inject test admin users into localStorage

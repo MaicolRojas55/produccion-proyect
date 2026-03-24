@@ -21,22 +21,22 @@ import {
   Calendar
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '@/auth/useAuth'
+import { useAuth } from '@/features/auth/useAuth'
 import {
   loadAttendance,
   loadAgendaInscriptions,
   loadConferences,
   loadStudentAgenda,
   saveStudentAgenda
-} from '@/conference/storage'
-import type { Conference, StudentAgendaItem } from '@/conference/types'
+} from '@/features/conference/storage'
+import type { Conference, StudentAgendaItem } from '@/features/conference/types'
 import { agendaData } from '@/data/agendaData'
 import {
   getStudentQrPayloadForConference,
   isQrWindowOpen,
   minutesUntilQrOpens,
   type StudentQrPayload
-} from '@/studentQr/studentQr'
+} from '@/features/student-qr/studentQr'
 
 function newId() {
   const c = crypto as unknown as { randomUUID?: () => string }
@@ -386,7 +386,7 @@ function ConferenceQrCard({
   const payload: StudentQrPayload | null = useMemo(() => {
     if (!qrOpen) return null
     return getStudentQrPayloadForConference(
-      user as import('@/auth/types').User,
+      user as import('@/features/auth/types').User,
       conference.id
     )
   }, [user, conference.id, qrOpen])

@@ -31,21 +31,21 @@ import {
   QrCode,
   Users
 } from 'lucide-react'
-import { useAuth } from '@/auth/useAuth'
-import { isStaffRole } from '@/auth/types'
-import { getDeviceId } from '@/device/device'
-import { loadUsers } from '@/auth/storage'
+import { useAuth } from '@/features/auth/useAuth'
+import { isStaffRole } from '@/features/auth/types'
+import { getDeviceId } from '@/features/device/device'
+import { loadUsers } from '@/features/auth/storage'
 import {
   loadAttendance,
   loadConferences,
   saveAttendance,
   saveConferences
-} from '@/conference/storage'
-import type { Conference, Attendance } from '@/conference/types'
+} from '@/features/conference/storage'
+import type { Conference, Attendance } from '@/features/conference/types'
 import {
   parseStudentQrPayload,
   verifyStudentQrToken
-} from '@/studentQr/studentQr'
+} from '@/features/student-qr/studentQr'
 
 function newId() {
   const c = crypto as unknown as { randomUUID?: () => string }

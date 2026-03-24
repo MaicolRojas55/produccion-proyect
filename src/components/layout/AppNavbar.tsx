@@ -6,8 +6,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { useAuth } from '@/auth/useAuth'
-import { isStaffRole } from '@/auth/types'
+import { useAuth } from '@/features/auth/useAuth'
+import { isStaffRole } from '@/features/auth/types'
 import {
   BookOpen,
   ChevronDown,

@@ -2,8 +2,8 @@
  * QR único del usuario registrado: se genera una sola vez y contiene su información
  * para que el staff (web master) lo lea y registre asistencia (evita plagio/suplantación).
  */
-import { loadUsers, saveUsers } from '@/auth/storage'
-import type { User } from '@/auth/types'
+import { loadUsers, saveUsers } from '@/features/auth/storage'
+import type { User } from '@/features/auth/types'
 
 const QR_TOKEN_KEY = 'qrToken'
 

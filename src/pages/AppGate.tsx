@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/auth/useAuth";
-import { isStaffRole } from "@/auth/types";
+import { useAuth } from "@/features/auth/useAuth";
+import { isStaffRole } from "@/features/auth/types";
 
 export default function AppGate() {
   const { user } = useAuth();
