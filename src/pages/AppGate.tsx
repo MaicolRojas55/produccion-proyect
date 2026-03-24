@@ -6,6 +6,6 @@ export default function AppGate() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/auth" replace />;
   if (isStaffRole(user.role)) return <Navigate to="/dashboard" replace />;
-  return <Navigate to="/agenda" replace />;
+  return <Navigate to="/student" replace />;
 }
 
