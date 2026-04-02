@@ -195,11 +195,19 @@ export function AppNavbar({
                 Agenda
               </Button>
             </Link>
-            {isStaff && (
-              <Button asChild variant="secondary" size="sm">
+            {user.role === 'super_admin' && (
+              <Button asChild variant="secondary" size="sm" className="ml-2">
                 <Link to="/dashboard">
                   <LayoutDashboard className="h-4 w-4 mr-2" />
-                  Dashboard
+                  Dashboard (Admin)
+                </Link>
+              </Button>
+            )}
+            {user.role === 'web_master' && (
+              <Button asChild variant="secondary" size="sm" className="ml-2">
+                <Link to="/web-master">
+                  <LayoutDashboard className="h-4 w-4 mr-2" />
+                  Web Master
                 </Link>
               </Button>
             )}

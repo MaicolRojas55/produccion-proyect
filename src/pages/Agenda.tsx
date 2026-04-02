@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { agendaData } from '@/data/agendaData'
+import { agendaData as defaultAgenda } from '@/data/agendaData'
+import { useEditableAgenda } from '@/features/agenda/storage'
 import AgendaHero from '@/components/shared/AgendaHero'
 import DayTabContent from '@/components/shared/DayTabContent'
 import { AppNavbar } from '@/components/layout/AppNavbar'
@@ -134,6 +135,7 @@ const Agenda = () => {
   const [activeDay, setActiveDay] = useState(0)
   const [tick, setTick] = useState(0)
   const { user } = useAuth()
+  const { agenda: agendaData } = useEditableAgenda()
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -179,7 +181,7 @@ const Agenda = () => {
       })
     )
     return Array.from(locs).sort()
-  }, [])
+  }, [agendaData])
 
   const uniqueSpeakers = useMemo(() => {
     const spks = new Set<string>()
@@ -189,7 +191,7 @@ const Agenda = () => {
       })
     )
     return Array.from(spks).sort()
-  }, [])
+  }, [agendaData])
 
   const filteredDayData = useMemo(() => {
     const currentDay = agendaData[activeDay]
@@ -205,7 +207,7 @@ const Agenda = () => {
     })
 
     return { ...currentDay, sessions: filteredSessions }
-  }, [activeDay, selectedLocation, selectedType, selectedSpeaker])
+  }, [activeDay, selectedLocation, selectedType, selectedSpeaker, agendaData])
 
   const canInscribe = user && isRegisteredUserRole(user.role)
   const currentUserId = canInscribe ? user.id : null
@@ -336,6 +338,16 @@ const Agenda = () => {
                     title="Limpiar filtros"
                   >
                     <X className="w-4 h-4" />
+                  </Button>
+                )}
+                {user?.role === 'web_master' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="ml-auto border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-300 shadow-sm"
+                  >
+                    <Link to="/web-master">✏️ Editar Agenda</Link>
                   </Button>
                 )}
               </div>

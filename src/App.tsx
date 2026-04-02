@@ -14,6 +14,9 @@ import Agenda from "./pages/Agenda";
 import AppGate from "./pages/AppGate";
 import ProfessorDashboard from "./pages/ProfessorDashboard";
 import StudentPortal from "./pages/StudentPortal";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import WebMasterDashboard from "./pages/WebMasterDashboard";
+import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +47,22 @@ const router = createBrowserRouter(
         <RequireAuth>
           <StudentPortal />
         </RequireAuth>
+      ),
+    },
+    {
+      path: "/super-admin",
+      element: (
+        <ProtectedRoute allowedRoles={['super_admin']}>
+          <SuperAdminDashboard />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "/web-master",
+      element: (
+        <ProtectedRoute allowedRoles={['web_master', 'super_admin']}>
+          <WebMasterDashboard />
+        </ProtectedRoute>
       ),
     },
     {

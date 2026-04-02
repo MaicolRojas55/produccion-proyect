@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell
+} from "recharts"
+import * as XLSX from "xlsx"
+import { useToast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -34,7 +40,7 @@ import {
 import { useAuth } from '@/features/auth/useAuth'
 import { isStaffRole } from '@/features/auth/types'
 import { getDeviceId } from '@/features/device/device'
-import { loadUsers } from '@/features/auth/storage'
+import { loadUsers, saveUsers } from '@/features/auth/storage'
 import {
   loadAttendance,
   loadConferences,
@@ -42,6 +48,7 @@ import {
   saveConferences
 } from '@/features/conference/storage'
 import type { Conference, Attendance } from '@/features/conference/types'
+import type { Role, User } from '@/features/auth/types'
 import {
   parseStudentQrPayload,
   verifyStudentQrToken
@@ -64,7 +71,7 @@ function formatIsoShort(iso: string) {
 }
 
 function toCsv(rows: string[][]) {
-  const esc = (v: string) => `"${v.replaceAll('"', '""')}"`
+  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`
   return rows.map((r) => r.map((x) => esc(x)).join(',')).join('\n')
 }
 
@@ -114,6 +121,16 @@ export default function ProfessorDashboard() {
   const [detailsFor, setDetailsFor] = useState<Conference | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
 
+  const [activeTab, setActiveTab] = useState<'reuniones' | 'admin'>('reuniones')
+  const [allUsers, setAllUsers] = useState<User[]>([])
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (user?.role === 'super_admin') {
+      setAllUsers(loadUsers())
+    }
+  }, [user])
+
   const [title, setTitle] = useState('')
   const [location, setLocation] = useState('')
   const [startAt, setStartAt] = useState('')
@@ -143,6 +160,30 @@ export default function ProfessorDashboard() {
       users.filter((u) => u.role === 'usuario_registrado').map((u) => [u.id, u])
     )
   }, [])
+
+  const handleRoleChange = (userId: string, newRole: Role) => {
+    const updatedUsers = allUsers.map(u => u.id === userId ? { ...u, role: newRole } : u);
+    setAllUsers(updatedUsers);
+    saveUsers(updatedUsers);
+    toast({ title: "Rol Actualizado", description: "El rol ha sido guardado exitosamente." });
+  };
+
+  const exportToExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(allUsers);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Usuarios");
+    XLSX.writeFile(workbook, "Usuarios_Backup.xlsx");
+    toast({ title: "Backup Exportado", description: "Base de datos exportada." });
+  };
+
+  const roleCounts: Record<string, number> = allUsers.reduce((acc, current) => {
+    acc[current.role] = (acc[current.role] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const statData = ["super_admin", "web_master", "usuario_registrado"].map(r => ({ name: r, value: roleCounts[r] || 0 }));
+  // CONIITI Colors: purple-500, yellow-500, blue-500
+  const COLORS = ['#8b5cf6', '#eab308', '#3b82f6'];
 
   if (!user) return null
   if (!isStaffRole(user.role)) {
@@ -195,11 +236,24 @@ export default function ProfessorDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8 grid gap-6">
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card className="p-5">
-            <div className="text-sm text-muted-foreground">
-              Reuniones creadas
-            </div>
+        {user.role === 'super_admin' && (
+          <div className="flex bg-white rounded-lg p-1 shadow-sm border w-fit">
+            <Button variant={activeTab === 'reuniones' ? 'default' : 'ghost'} onClick={() => setActiveTab('reuniones')}>
+              Mis Reuniones
+            </Button>
+            <Button variant={activeTab === 'admin' ? 'default' : 'ghost'} onClick={() => setActiveTab('admin')}>
+              Administración Global
+            </Button>
+          </div>
+        )}
+
+        {activeTab === 'reuniones' && (
+          <>
+            <div className="grid md:grid-cols-3 gap-4">
+              <Card className="p-5">
+                <div className="text-sm text-muted-foreground">
+                  Reuniones creadas
+                </div>
             <div className="text-3xl font-heading font-black">
               {conferences.length}
             </div>
@@ -634,6 +688,101 @@ export default function ProfessorDashboard() {
             )}
           </div>
         </Card>
+        </>
+      )}
+
+      {user.role === 'super_admin' && activeTab === 'admin' && (
+        <div className="space-y-8 animate-in fade-in duration-500 w-full">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+              Resumen del Sistema
+            </h2>
+            <Button onClick={exportToExcel} variant="outline" className="shadow-sm">
+              <Download className="w-4 h-4 mr-2" />
+              Exportar Usuarios (Excel)
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <Card className="shadow-lg border-none bg-white/50 backdrop-blur w-full">
+              <div className="p-5 font-bold">Usuarios por Rol</div>
+              <div className="h-64 px-2 pb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={statData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip cursor={{fill: 'transparent'}} />
+                    <Bar dataKey="value" fill="#8884d8" radius={[4, 4, 0, 0]}>
+                      {statData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <Card className="shadow-lg border-none bg-white/50 backdrop-blur w-full">
+              <div className="p-5 font-bold">Distribución de Usuarios</div>
+              <div className="h-64 flex justify-center pb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={statData} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value" label>
+                      {statData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+
+          <Card className="shadow-lg border-none">
+            <div className="p-5 font-bold">Gestión de Roles</div>
+            <div className="p-5 pt-0">
+              <div className="rounded-md border bg-white overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Rol Actual</TableHead>
+                      <TableHead>Acción</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allUsers.map(u => (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-medium">{u.nombre}</TableCell>
+                        <TableCell>{u.email}</TableCell>
+                        <TableCell>{u.role}</TableCell>
+                        <TableCell>
+                          <Select defaultValue={u.role} onValueChange={(val: Role) => handleRoleChange(u.id, val)}>
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Seleccionar Rol" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {["super_admin", "web_master", "usuario_registrado"].map(r => (
+                                <SelectItem key={r} value={r}>
+                                  {r}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
       </main>
     </div>
   )
