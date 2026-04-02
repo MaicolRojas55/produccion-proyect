@@ -20,6 +20,9 @@ import {
 import { Link } from 'react-router-dom'
 import { AppNavbar } from '@/components/layout/AppNavbar'
 import { useCountdown } from '@/hooks/use-countdown'
+import { useAuth } from '@/features/auth/useAuth'
+import { useHomeContent } from '@/features/content/storage'
+import { EditHeroModal, EditGalleryModal } from '@/features/content/EditModals'
 /** Fecha y hora de inicio del evento (inicio del congreso). El contador corre hacia esta fecha. */
 const EVENT_DATE = new Date('2026-10-01T08:00:00')
 
@@ -99,6 +102,8 @@ const latestNews = [
 const Index = () => {
   const countdown = useCountdown(EVENT_DATE)
   const [memoriasPage, setMemoriasPage] = useState(0)
+  const { user } = useAuth()
+  const { content, updateContent } = useHomeContent()
 
   // Scroll al apartado cuando la URL tiene hash (ej. /#comite, /#memorias, /#memorias-1)
   useEffect(() => {
@@ -146,19 +151,19 @@ const Index = () => {
               País invitado: España
             </Badge>
             <h1 className="font-heading font-black text-4xl md:text-6xl lg:text-7xl text-primary-foreground tracking-tight mb-3">
-              XI CONIITI 2026
+              {content.hero.title}
+              {user?.role === 'web_master' && <EditHeroModal content={content} updateContent={updateContent} />}
             </h1>
             <p className="text-xl md:text-2xl text-secondary font-heading font-bold mb-2">
               Híbrido
             </p>
             <p className="text-primary-foreground/90 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-              Décimo Primer Congreso Internacional de Innovación y Tendencias en
-              Ingeniería
+              {content.hero.subtitle}
             </p>
 
             {/* Countdown — corre cada segundo hasta el inicio del evento */}
             <p className="text-sm text-primary-foreground/80 mb-3">
-              Inicio del evento: 1 al 3 de octubre de 2026
+              {content.hero.date}
             </p>
             <div className="flex flex-wrap justify-center gap-4 md:gap-6 mb-10">
               {[
@@ -359,17 +364,18 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <h2 className="font-heading font-black text-2xl md:text-3xl text-foreground text-center mb-6">
             Galería
+            {user?.role === 'web_master' && <EditGalleryModal content={content} updateContent={updateContent} />}
           </h2>
           <p className="text-muted-foreground text-center max-w-xl mx-auto mb-8">
             Imágenes de ediciones anteriores y del evento.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            {content.gallery.map((imgText, i) => (
               <div
                 key={i}
-                className="aspect-square rounded-lg bg-muted border border-border flex items-center justify-center text-muted-foreground text-sm"
+                className="aspect-square rounded-lg bg-muted border border-border flex items-center justify-center text-muted-foreground text-sm p-4 text-center"
               >
-                Galería {i}
+                {imgText}
               </div>
             ))}
           </div>
