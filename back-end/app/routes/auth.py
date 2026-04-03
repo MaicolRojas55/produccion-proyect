@@ -8,6 +8,7 @@ from ..auth import authenticate_user, create_access_token, get_current_user, get
 from ..config import settings
 from ..db import users_collection, otps_collection
 from ..models import OTP, Token, UserCreate, User, UserLogin
+from ..email_service import email_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -16,7 +17,7 @@ def generate_otp_code(length: int = 6) -> str:
     return ''.join(str(random.randint(0, 9)) for _ in range(length))
 
 
-@router.post("/register", response_model=OTP)
+@router.post("/register", response_model=dict)
 async def register(user_data: UserCreate):
     existing = await users_collection.find_one({"email": user_data.email})
     if existing:
@@ -45,9 +46,22 @@ async def register(user_data: UserCreate):
     }
     result = await otps_collection.insert_one(otp_doc)
 
-    # TODO: Enviar código OTP por correo o SMS.
+    # Enviar código OTP por email
+    email_sent = await email_service.send_otp_email(
+        to_email=user_data.email,
+        otp_code=code,
+        user_name=user_data.full_name
+    )
 
-    return OTP(**{**otp_doc, "_id": str(result.inserted_id)})
+    if not email_sent:
+        # Si falla el envío, aún así creamos la cuenta pero informamos del problema
+        print(f"⚠️  No se pudo enviar email OTP a {user_data.email}")
+
+    return {
+        "message": "Usuario registrado. Revisa tu email para el código de verificación.",
+        "email_sent": email_sent,
+        "otp_id": str(result.inserted_id)
+    }
 
 
 @router.post("/verify-otp")
@@ -62,7 +76,56 @@ async def verify_otp(email: EmailStr, code: str):
     await otps_collection.update_one({"_id": otp_doc["_id"]}, {"$set": {"verified": True}})
     await users_collection.update_one({"email": email}, {"$set": {"is_verified": True}})
 
-    return {"message": "OTP verificado"}
+    # Enviar email de bienvenida
+    user_doc = await users_collection.find_one({"email": email})
+    if user_doc:
+        await email_service.send_welcome_email(
+            to_email=email,
+            user_name=user_doc.get("full_name", "Usuario")
+        )
+
+    return {"message": "OTP verificado exitosamente. ¡Bienvenido a CONIITI!"}
+
+
+@router.post("/resend-otp", response_model=dict)
+async def resend_otp(email: EmailStr):
+    """Reenviar código OTP si expiró"""
+    # Verificar que el usuario existe y no está verificado
+    user_doc = await users_collection.find_one({"email": email, "is_verified": False})
+    if not user_doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado o ya verificado")
+
+    # Generar nuevo código OTP
+    code = generate_otp_code(settings.otp_length)
+    otp_doc = {
+        "email": email,
+        "code": code,
+        "created_at": datetime.utcnow(),
+        "expires_at": datetime.utcnow() + timedelta(minutes=settings.otp_expire_minutes),
+        "verified": False,
+    }
+
+    # Invalidar OTPs anteriores no verificados
+    await otps_collection.update_many(
+        {"email": email, "verified": False},
+        {"$set": {"verified": True}}  # Marcar como usados
+    )
+
+    # Insertar nuevo OTP
+    result = await otps_collection.insert_one(otp_doc)
+
+    # Enviar código OTP por email
+    email_sent = await email_service.send_otp_email(
+        to_email=email,
+        otp_code=code,
+        user_name=user_doc.get("full_name", "Usuario")
+    )
+
+    return {
+        "message": "Nuevo código OTP enviado a tu email.",
+        "email_sent": email_sent,
+        "otp_id": str(result.inserted_id)
+    }
 
 
 @router.post("/token", response_model=Token)

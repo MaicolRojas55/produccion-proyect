@@ -10,6 +10,14 @@ class Settings(BaseSettings):
     otp_length: int = 6
     otp_expire_minutes: int = 10
 
+    # Email SMTP settings (para envío gratuito)
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str = ""  # Tu email Gmail
+    smtp_password: str = ""  # App password de Gmail
+    smtp_from_email: str = ""  # Email remitente
+    smtp_from_name: str = "CONIITI Conference"
+
     class Config:
         env_file = ".env"
 
