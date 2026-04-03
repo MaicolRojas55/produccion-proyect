@@ -1,0 +1,20 @@
+[project]
+name = "produccion-backend"
+version = "0.1.0"
+description = "Backend API para el proyecto de conferencia, FastAPI + MongoDB + OTP"
+requires-python = ">=3.11"
+
+[project.dependencies]
+fastapi = "0.114.0"
+uvicorn = {extras = ["standard"], version = "0.23.0"}
+motor = "3.5.3"
+python-jose = {extras = ["cryptography"], version = "3.2.0"}
+passlib = {extras = ["bcrypt"], version = "1.7.4"}
+pydantic = "2.8.0"
+pydantic-settings = "2.3.0"
+python-dotenv = "1.0.0"
+email-validator = "2.0.0"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
