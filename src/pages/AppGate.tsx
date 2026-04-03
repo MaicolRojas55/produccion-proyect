@@ -1,11 +1,10 @@
-import { Navigate } from "react-router-dom";
-import { useAuth } from "@/features/auth/useAuth";
-import { isStaffRole } from "@/features/auth/types";
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '@/features/auth/useAuth'
 
 export default function AppGate() {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/auth" replace />;
-  if (isStaffRole(user.role)) return <Navigate to="/dashboard" replace />;
-  return <Navigate to="/agenda" replace />;
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/auth" replace />
+  if (user.role === 'super_admin' || user.role === 'web_master')
+    return <Navigate to="/dashboard" replace />
+  return <Navigate to="/agenda" replace />
 }
-

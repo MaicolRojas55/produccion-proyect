@@ -347,7 +347,7 @@ const Agenda = () => {
                     asChild
                     className="ml-auto border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-300 shadow-sm"
                   >
-                    <Link to="/web-master">✏️ Editar Agenda</Link>
+                    <Link to="/dashboard">✏️ Editar Agenda</Link>
                   </Button>
                 )}
               </div>
