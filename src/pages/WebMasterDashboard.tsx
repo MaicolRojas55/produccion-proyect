@@ -6,11 +6,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Check, Columns3, FileText, Image as ImageIcon, LayoutList, Calendar, Save } from "lucide-react";
+import { Check, Columns3, FileText, Image as ImageIcon, LayoutList, Calendar, Save, ArrowLeft, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useEditableAgenda } from "@/features/agenda/storage";
 import SessionCard from "@/components/shared/SessionCard";
 import { Session, SessionType } from "@/data/agendaData";
+
+function newId() {
+  const c = crypto as unknown as { randomUUID?: () => string };
+  return c?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
 
 const AUDIT_LOGS = [
   { id: 1, date: "2024-04-01 10:20", user: "webmaster@test.com", action: "Edición", resource: "Agenda de Día 1" },
@@ -18,14 +24,13 @@ const AUDIT_LOGS = [
 ];
 
 export default function WebMasterDashboard() {
-  const [activeTab, setActiveTab] = useState<"agenda" | "media" | "logs">("agenda");
+  const [activeTab, setActiveTab] = useState<"resumen" | "agenda" | "media" | "logs">("resumen");
   const { toast } = useToast();
   
   const { agenda, updateAgenda } = useEditableAgenda();
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
-  // Form State
   const [formData, setFormData] = useState<Partial<Session> | null>(null);
 
   const editor = useEditor({
@@ -40,6 +45,7 @@ export default function WebMasterDashboard() {
     if (editor && formData && formData.description !== editor.getHTML()) {
       editor.commands.setContent(formData.description || "");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSessionId]);
 
   const activeDay = agenda[selectedDayIdx];
@@ -55,7 +61,6 @@ export default function WebMasterDashboard() {
 
   const handleSaveSession = () => {
     if (!formData || !selectedSessionId) return;
-    
     const newAgenda = [...agenda];
     const daySessions = [...newAgenda[selectedDayIdx].sessions];
     const sIdx = daySessions.findIndex(s => s.id === selectedSessionId);
@@ -63,24 +68,51 @@ export default function WebMasterDashboard() {
       daySessions[sIdx] = { ...daySessions[sIdx], ...formData } as Session;
       newAgenda[selectedDayIdx].sessions = daySessions;
       updateAgenda(newAgenda);
-      
-      toast({
-        title: "Agenda Actualizada",
-        description: "La sesión ha sido guardada y publicada en vivo.",
-      });
+      toast({ title: "Agenda Actualizada", description: "La sesión ha sido guardada y publicada en vivo." });
     }
   };
 
+  const handleCreateNewSession = () => {
+    const newAgenda = [...agenda];
+    const newSession: Session = {
+      id: newId(),
+      time: "10:00",
+      endTime: "11:00",
+      title: "Nueva Reunión / Conferencia",
+      type: "conference",
+      location: "Auditorio Principal",
+      speaker: "Por confirmar",
+    };
+    newAgenda[selectedDayIdx].sessions.push(newSession);
+    updateAgenda(newAgenda);
+    setSelectedSessionId(newSession.id);
+    setFormData(newSession);
+    toast({ title: "Sesión Creada", description: "Configura los detalles en la vista derecha." });
+  };
+
+  const totalSessionsCount = agenda.reduce((acc, curr) => acc + curr.sessions.length, 0);
+
   return (
-    <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center gap-2 mb-6">
-        <Columns3 className="w-8 h-8 text-purple-600" />
-        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
-          Content Manager (Web Master)
-        </h1>
+    <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500 bg-slate-50 min-h-screen">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Columns3 className="w-8 h-8 text-purple-600" />
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
+            Content Manager
+          </h1>
+        </div>
+        <Button asChild variant="outline" className="text-purple-700 border-purple-200 hover:bg-purple-50 shrink-0">
+          <Link to="/">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Volver al Inicio
+          </Link>
+        </Button>
       </div>
 
-      <div className="flex bg-white rounded-lg p-1 shadow-sm border w-fit">
+      <div className="flex bg-white rounded-lg p-1 shadow-sm border w-full overflow-x-auto">
+        <Button variant={activeTab === "resumen" ? "default" : "ghost"} onClick={() => setActiveTab("resumen")}>
+          Resumen
+        </Button>
         <Button variant={activeTab === "agenda" ? "default" : "ghost"} onClick={() => setActiveTab("agenda")}>
           <LayoutList className="w-4 h-4 mr-2" />
           Editor de Agenda
@@ -96,12 +128,58 @@ export default function WebMasterDashboard() {
       </div>
 
       <div className="mt-8">
+        {activeTab === "resumen" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800">Panel de Control: Web Master</h2>
+            <div className="grid md:grid-cols-3 gap-6">
+              <Card className="shadow-lg border-none bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                <CardContent className="p-6">
+                  <div className="text-sm opacity-90 font-semibold mb-1">Total Sesiones en Agenda</div>
+                  <div className="text-4xl font-black">{totalSessionsCount}</div>
+                </CardContent>
+              </Card>
+              <Card className="shadow-lg border-none bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
+                <CardContent className="p-6">
+                  <div className="text-sm opacity-90 font-semibold mb-1">Días de Evento</div>
+                  <div className="text-4xl font-black">{agenda.length}</div>
+                </CardContent>
+              </Card>
+              <Card className="shadow-lg border-none bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                <CardContent className="p-6">
+                  <div className="text-sm opacity-90 font-semibold mb-1">Secciones Habilitadas</div>
+                  <div className="text-4xl font-black">100%</div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <Card className="shadow-lg border-none mt-8">
+              <CardHeader>
+                <CardTitle>Accesos Rápidos</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-4">
+                <Button onClick={() => setActiveTab("agenda")} className="bg-purple-600 hover:bg-purple-700 text-white">
+                  Gestionar Charlas de Agenda
+                </Button>
+                <Button asChild variant="outline" className="border-purple-600 text-purple-600 hover:bg-purple-50">
+                  <Link to="/">Saltar a Edición Global de Portada (Modo en Vivo)</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {activeTab === "agenda" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            {/* Lista de Sesiones */}
-            <Card className="lg:col-span-3 shadow-sm border-none">
-              <CardContent className="p-4">
+            <Card className="lg:col-span-3 shadow-sm border-none bg-white">
+              <CardHeader className="py-4 border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Días & Sesiones</CardTitle>
+                  <Button variant="ghost" size="icon" onClick={handleCreateNewSession} title="Crear Sesión Vacía">
+                    <Plus className="w-5 h-5 text-purple-600" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 pt-4">
                 <Select value={String(selectedDayIdx)} onValueChange={(v) => { setSelectedDayIdx(Number(v)); setSelectedSessionId(null); }}>
                   <SelectTrigger className="mb-4">
                     <SelectValue placeholder="Seleccionar Día" />
@@ -126,14 +204,13 @@ export default function WebMasterDashboard() {
               </CardContent>
             </Card>
 
-            {/* Formulario de Edición */}
             {formData && selectedSessionId ? (
               <Card className="lg:col-span-5 shadow-lg border-none bg-white">
                 <CardHeader className="border-b pb-4 mb-4">
                   <CardTitle className="text-xl flex items-center justify-between">
                     Editar Sesión
                     <Button size="sm" onClick={handleSaveSession} className="bg-purple-600 hover:bg-purple-700">
-                      <Save className="w-4 h-4 mr-2" /> Guardar Todos los Cambios
+                      <Save className="w-4 h-4 mr-2" /> Guardar Cambios
                     </Button>
                   </CardTitle>
                 </CardHeader>
@@ -187,8 +264,8 @@ export default function WebMasterDashboard() {
                     <label className="text-sm font-medium">Descripción Completa</label>
                     <div className="border rounded-lg overflow-hidden bg-white shadow-sm mt-1">
                       <div className="bg-slate-50 p-2 flex gap-2 border-b">
-                        <Button variant="ghost" size="sm" onClick={() => editor?.chain().focus().toggleBold().run()} className={editor?.isActive('bold') ? 'bg-slate-200' : ''}>Negrita</Button>
-                        <Button variant="ghost" size="sm" onClick={() => editor?.chain().focus().toggleItalic().run()} className={editor?.isActive('italic') ? 'bg-slate-200' : ''}>Cursiva</Button>
+                        <Button variant="ghost" size="sm" onClick={() => editor?.chain().focus().toggleBold().run()} className={editor?.isActive('bold') ? 'bg-slate-200' : ''}>B</Button>
+                        <Button variant="ghost" size="sm" onClick={() => editor?.chain().focus().toggleItalic().run()} className={editor?.isActive('italic') ? 'bg-slate-200' : ''}>I</Button>
                       </div>
                       <div className="p-3 min-h-[150px]">
                         <EditorContent editor={editor} className="prose prose-sm max-w-none focus:outline-none" />
@@ -204,7 +281,6 @@ export default function WebMasterDashboard() {
               </div>
             )}
 
-            {/* Live Preview de la Tarjeta */}
             <div className="lg:col-span-4">
               <div className="sticky top-6">
                 <h3 className="font-semibold text-gray-500 mb-4 flex items-center uppercase tracking-wide text-xs">
@@ -213,7 +289,6 @@ export default function WebMasterDashboard() {
                 </h3>
                 {formData ? (
                   <div className="pointer-events-none opacity-90 scale-[0.95] origin-top">
-                    {/* Intercept interactions so they dont accidentally navigate while previewing */}
                     <SessionCard 
                       sessionId={formData.id!} 
                       index={0} 
@@ -233,7 +308,7 @@ export default function WebMasterDashboard() {
                   </div>
                 ) : (
                   <div className="aspect-[4/3] bg-gray-100 rounded-xl animate-pulse flex items-center justify-center">
-                    <span className="text-gray-400 text-sm">Previsualización de Tarjeta</span>
+                    <span className="text-gray-400 text-sm">Previsualización</span>
                   </div>
                 )}
               </div>
@@ -242,28 +317,22 @@ export default function WebMasterDashboard() {
           </div>
         )}
 
-        {/* Media Management Tab */}
         {activeTab === "media" && (
           <Card className="shadow-lg border-none bg-white/60">
-            <CardHeader>
-              <CardTitle>Gestor de Media Locales</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Gestor de Media Locales</CardTitle></CardHeader>
             <CardContent>
               <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-64 bg-slate-50 relative overflow-hidden">
                 <ImageIcon className="w-16 h-16 text-gray-300 mb-4" />
-                <p className="text-gray-500">Arrastra logos o imágenes aquí, o haz clic para subir</p>
+                <p className="text-gray-500">Arrastra imágenes aquí</p>
                 <Input type="file" className="absolute inset-0 opacity-0 cursor-pointer" />
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Audit Logs Tab */}
         {activeTab === "logs" && (
           <Card className="shadow-lg border-none bg-white/60">
-            <CardHeader>
-              <CardTitle>Registros de Auditoría</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Auditoría</CardTitle></CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>

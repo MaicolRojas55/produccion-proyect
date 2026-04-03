@@ -205,7 +205,7 @@ export function AppNavbar({
             )}
             {user.role === 'web_master' && (
               <Button asChild variant="secondary" size="sm" className="ml-2">
-                <Link to="/web-master">
+                <Link to="/dashboard">
                   <LayoutDashboard className="h-4 w-4 mr-2" />
                   Web Master
                 </Link>
