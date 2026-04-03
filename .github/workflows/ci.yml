@@ -24,9 +24,11 @@ jobs:
 
       - name: Instalar dependencias
         run: npm ci
+        working-directory: front-end
 
       - name: Ejecutar ESLint (falla si hay errores)
         run: npm run lint
+        working-directory: front-end
 
   test:
     name: 🧪 Pruebas Unitarias
@@ -44,9 +46,11 @@ jobs:
 
       - name: Instalar dependencias
         run: npm ci
+        working-directory: front-end
 
       - name: Ejecutar pruebas con Vitest
         run: npm run test
+        working-directory: front-end
 
   build:
     name: 🏗️ Build Estricto
@@ -64,8 +68,12 @@ jobs:
 
       - name: Instalar dependencias
         run: npm ci
+        working-directory: front-end
 
       - name: Build de producción (falla con warnings)
         run: npm run build
+        env:
+          CI: true
+        working-directory: front-end
         env:
           CI: true
