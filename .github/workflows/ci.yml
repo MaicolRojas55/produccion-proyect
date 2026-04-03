@@ -3,15 +3,22 @@ name: CI Pipeline
 on:
   push:
     branches:
+      - main
       - desarrollo-rediseño
+      - '**'
   pull_request:
     branches:
       - main
+      - desarrollo-rediseño
+      - '**'
 
 jobs:
   lint:
     name: 🔍 Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front-end
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -24,38 +31,41 @@ jobs:
 
       - name: Instalar dependencias
         run: npm ci
-        working-directory: front-end
 
       - name: Ejecutar ESLint (falla si hay errores)
         run: npm run lint
-        working-directory: front-end
 
-  test:
-    name: 🧪 Pruebas Unitarias
+  backend-check:
+    name: 🐍 Back-end Check
     runs-on: ubuntu-latest
     needs: lint
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          node-version: 20
-          cache: "npm"
+          python-version: 3.11
 
-      - name: Instalar dependencias
-        run: npm ci
-        working-directory: front-end
+      - name: Instalar dependencias back-end
+        run: |
+          cd back-end
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
 
-      - name: Ejecutar pruebas con Vitest
-        run: npm run test
-        working-directory: front-end
+      - name: Validar compilación de Python
+        run: |
+          cd back-end
+          python -m compileall -q app
 
-  build:
-    name: 🏗️ Build Estricto
+  test:
+    name: 🧪 Pruebas Unitarias
     runs-on: ubuntu-latest
-    needs: test
+    needs: [lint, backend-check]
+    defaults:
+      run:
+        working-directory: front-end
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -68,12 +78,31 @@ jobs:
 
       - name: Instalar dependencias
         run: npm ci
+
+      - name: Ejecutar pruebas con Vitest
+        run: npm run test
+
+  build:
+    name: 🏗️ Build Estricto
+    runs-on: ubuntu-latest
+    needs: test
+    defaults:
+      run:
         working-directory: front-end
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm ci
 
       - name: Build de producción (falla con warnings)
         run: npm run build
-        env:
-          CI: true
-        working-directory: front-end
         env:
           CI: true
