@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import auth, users
+from .routes import auth, users, sessions, speakers, calendar, conferences, student_agenda, agenda_inscriptions, attendance
 
 app = FastAPI(title="Producción Conference API", version="0.1.0")
 
@@ -22,6 +22,13 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(sessions.router)
+app.include_router(speakers.router)
+app.include_router(calendar.router)
+app.include_router(conferences.router)
+app.include_router(student_agenda.router)
+app.include_router(agenda_inscriptions.router)
+app.include_router(attendance.router)
 
 
 @app.get("/")
