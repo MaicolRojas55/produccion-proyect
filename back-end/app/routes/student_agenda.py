@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from ..auth import get_current_active_user
 from ..db import student_agenda_collection, conferences_collection
-from ..models import StudentAgendaItem, Conference, User
+from ..models import Conference, User
+from ..mongo_utils import as_object_id, normalize_mongo_list_ids
 
 router = APIRouter(prefix="/student-agenda", tags=["student-agenda"])
 
@@ -24,7 +25,7 @@ async def get_my_agenda(current_user: User = Depends(get_current_active_user)):
         return []
 
     # Obtener las conferencias
-    conferences_cursor = conferences_collection.find({"_id": {"$in": conference_ids}})
+    conferences_cursor = conferences_collection.find({"_id": {"$in": normalize_mongo_list_ids(conference_ids)}})
     conferences = []
     async for conference in conferences_cursor:
         conferences.append(Conference(**conference))
@@ -39,7 +40,7 @@ async def add_to_agenda(conference_id: str, current_user: User = Depends(get_cur
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo estudiantes registrados pueden gestionar agenda personal")
 
     # Verificar que la conferencia existe
-    conference = await conferences_collection.find_one({"_id": conference_id})
+    conference = await conferences_collection.find_one({"_id": as_object_id(conference_id)})
     if not conference:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conferencia no encontrada")
 

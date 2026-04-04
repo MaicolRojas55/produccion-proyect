@@ -1,6 +1,9 @@
 from datetime import datetime
 from typing import Literal, Optional
+
 from pydantic import BaseModel, EmailStr, Field
+
+from .mongo_utils import MongoBaseModel
 
 
 RoleType = Literal["super_admin", "web_master", "usuario_registrado"]
@@ -8,7 +11,7 @@ SessionType = Literal["keynote", "conference", "workshop", "panel", "networking"
 AudienceType = Literal["todos", "registrados", "staff"]
 
 
-class User(BaseModel):
+class User(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     full_name: str
     email: EmailStr
@@ -28,6 +31,10 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: RoleType = "usuario_registrado"
+
+
+class UserRoleUpdate(BaseModel):
+    role: RoleType
 
 
 class UserInDB(User):
@@ -50,7 +57,7 @@ class TokenData(BaseModel):
     role: RoleType | None
 
 
-class OTP(BaseModel):
+class OTP(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     email: EmailStr
     code: str
@@ -63,7 +70,7 @@ class OTP(BaseModel):
         json_encoders = {datetime: lambda v: v.isoformat()}
 
 
-class Session(BaseModel):
+class Session(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     date: str  # YYYY-MM-DD
     time: str  # HH:MM
@@ -91,7 +98,7 @@ class DaySchedule(BaseModel):
     sessions: list[Session]
 
 
-class Speaker(BaseModel):
+class Speaker(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     name: str
     role: str  # Cargo / Institución
@@ -109,7 +116,7 @@ class Speaker(BaseModel):
         json_encoders = {datetime: lambda v: v.isoformat()}
 
 
-class CalendarEvent(BaseModel):
+class CalendarEvent(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     date: str  # YYYY-MM-DD
     title: str
@@ -119,7 +126,7 @@ class CalendarEvent(BaseModel):
     description: Optional[str] = None
     created_by_user_id: str
     created_by_role: RoleType
-    attendees: list[str] = []  # Lista de user_ids
+    attendees: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
@@ -127,7 +134,7 @@ class CalendarEvent(BaseModel):
         json_encoders = {datetime: lambda v: v.isoformat()}
 
 
-class Conference(BaseModel):
+class Conference(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     title: str
     location: str
@@ -135,7 +142,7 @@ class Conference(BaseModel):
     end_at: str  # ISO datetime string
     description: Optional[str] = None
     capacity: Optional[int] = None
-    created_by_user_id: str
+    created_by_user_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
@@ -143,7 +150,7 @@ class Conference(BaseModel):
         json_encoders = {datetime: lambda v: v.isoformat()}
 
 
-class StudentAgendaItem(BaseModel):
+class StudentAgendaItem(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     student_id: str
     conference_id: str
@@ -154,7 +161,7 @@ class StudentAgendaItem(BaseModel):
         json_encoders = {datetime: lambda v: v.isoformat()}
 
 
-class AgendaInscription(BaseModel):
+class AgendaInscription(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     user_id: str
     session_id: str
@@ -165,7 +172,7 @@ class AgendaInscription(BaseModel):
         json_encoders = {datetime: lambda v: v.isoformat()}
 
 
-class Attendance(BaseModel):
+class Attendance(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     student_id: str
     conference_id: str

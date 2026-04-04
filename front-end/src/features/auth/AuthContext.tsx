@@ -1,14 +1,14 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
-import type { Role, User } from './types'
 import {
-  clearSession,
-  loadSession,
-  loadUsers,
-  saveSession,
-  saveUsers
-} from './storage'
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from 'react'
+import type { Role, User } from './types'
 import { getDeviceId } from '@/features/device/device'
-import { issueOtp, verifyAndConsumeOtp } from '@/features/otp/otp'
+import { apiClient, ApiError } from '@/lib/api'
 
 type LoginInput = {
   email: string
@@ -16,194 +16,191 @@ type LoginInput = {
 }
 
 type RegisterInput = {
-  nombre: string
+  full_name: string
   email: string
-  telefono?: string
   password: string
-  // role is ignored by the implementation; all registrations
-  // become "usuario_registrado" automatically
   role?: Role
 }
 
 type AuthContextValue = {
   user: User | null
+  isLoading: boolean
+  error: string | null
   login: (
     input: LoginInput
-  ) => { ok: true; user: User } | { ok: false; reason: 'INVALID' }
+  ) => Promise<{ ok: true; user: User } | { ok: false; reason: string }>
   register: (
     input: RegisterInput
-  ) => { ok: true; userId: string } | { ok: false; reason: 'EMAIL_TAKEN' }
+  ) => Promise<{ ok: true; userId: string } | { ok: false; reason: string }>
   requestActivationOtp: (
-    userId: string
-  ) => { ok: true; otpSimulado: string } | { ok: false }
+    email: string
+  ) => Promise<{ ok: true } | { ok: false; reason: string }>
   activateAccount: (input: {
-    userId: string
+    email: string
     otp: string
-  }) => { ok: true } | { ok: false }
+  }) => Promise<{ ok: true } | { ok: false; reason: string }>
   logout: () => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
 
-function newId() {
-  const c = crypto as unknown as { randomUUID?: () => string }
-  return (
-    c?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`
-  )
-}
-
-function normalizeRole(role: string | undefined): User['role'] {
-  if (
-    role === 'super_admin' ||
-    role === 'web_master' ||
-    role === 'usuario_registrado'
-  )
-    return role as User['role']
-  // map legacy roles to modern equivalents
-  if (role === 'superadmin' || role === 'admin') return 'super_admin'
-  if (role === 'webmaster' || role === 'profesor') return 'web_master'
-  if (role === 'estudiante') return 'usuario_registrado'
-  return 'usuario_registrado'
-}
-
-function loadUserFromSession(): User | null {
-  const session = loadSession()
-  if (!session) return null
-  const users = loadUsers()
-  const u = users.find((x) => x.id === session.userId) ?? null
-  if (!u) return null
-  return { ...u, role: normalizeRole(u.role) }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(loadUserFromSession)
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
+  // Cargar usuario del backend cuando la app inicia
   useEffect(() => {
-    getDeviceId()
-    // App.tsx is now responsible for injecting test admin users directly.
+    const initializeAuth = async () => {
+      try {
+        getDeviceId()
+        const token = apiClient.getToken()
+        if (token) {
+          const currentUser = await apiClient.getCurrentUser()
+          setUser(currentUser as User)
+        }
+      } catch (err) {
+        console.log('No usuario autenticado al iniciar')
+        setUser(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    initializeAuth()
   }, [])
 
   const login = useCallback(
-    ({
+    async ({
       email,
       password
-    }: LoginInput):
-      | { ok: true; user: User }
-      | { ok: false; reason: 'INVALID' } => {
-      const users = loadUsers()
-      console.log('Available users:', users)
-      let u =
-        users.find(
-          (x) =>
-            x.email.toLowerCase() === email.trim().toLowerCase() &&
-            x.password === password
-        ) ?? null
-      if (!u) {
-        console.log('No user found with email:', email)
-        return { ok: false, reason: 'INVALID' }
+    }: LoginInput): Promise<
+      { ok: true; user: User } | { ok: false; reason: string }
+    > => {
+      try {
+        setError(null)
+        const response = await apiClient.login({ email, password })
+
+        // Token es guardado automáticamente por apiClient
+        const currentUser = await apiClient.getCurrentUser()
+        setUser(currentUser as User)
+
+        return { ok: true, user: currentUser as User }
+      } catch (err) {
+        const message =
+          err instanceof ApiError ? err.message : 'Error de conexión'
+        setError(message)
+        return { ok: false, reason: message }
       }
-      u = { ...u, role: normalizeRole(u.role) }
-      // registered users must be activated before login
-      if (u.role === 'usuario_registrado' && !u.activated) {
-        console.log('User not activated:', u)
-        return { ok: false, reason: 'INVALID' }
-      }
-      saveSession({ userId: u.id })
-      setUser(u)
-      return { ok: true, user: u }
     },
     []
   )
 
   const register = useCallback(
-    ({
-      nombre,
+    async ({
+      full_name,
       email,
-      telefono,
       password,
-      role
-    }: RegisterInput):
-      | { ok: true; userId: string }
-      | { ok: false; reason: 'EMAIL_TAKEN' } => {
-      const users = loadUsers()
-      const exists = users.some(
-        (x) => x.email.toLowerCase() === email.trim().toLowerCase()
-      )
-      if (exists) return { ok: false, reason: 'EMAIL_TAKEN' }
-      const deviceId = getDeviceId()
-      // for this page all new users are 'usuario_registrado'
-      const roleNorm: Role = 'usuario_registrado'
-      const u: User = {
-        id: newId(),
-        nombre: nombre.trim(),
-        email: email.trim(),
-        password,
-        role: roleNorm,
-        telefono: telefono?.trim() || undefined,
-        activated: false, // will activate via OTP
-        primaryDeviceId:
-          roleNorm === 'usuario_registrado' ? deviceId : undefined,
-        createdAt: new Date().toISOString()
+      role = 'usuario_registrado'
+    }: RegisterInput): Promise<
+      { ok: true; userId: string } | { ok: false; reason: string }
+    > => {
+      try {
+        setError(null)
+        const response = await apiClient.register({
+          full_name,
+          email,
+          password,
+          role
+        })
+
+        // No hacer login automáticamente, requiere verificación OTP
+        return { ok: true, userId: response.otp_id }
+      } catch (err) {
+        const message =
+          err instanceof ApiError ? err.message : 'Error en registro'
+        setError(message)
+        return { ok: false, reason: message }
       }
-      saveUsers([...users, u])
-      // no immediate login for registered users; they will sign in after activation
-      return { ok: true, userId: u.id }
     },
     []
   )
 
   const requestActivationOtp = useCallback(
-    (userId: string): { ok: true; otpSimulado: string } | { ok: false } => {
-      const users = loadUsers()
-      const u = users.find((x) => x.id === userId) ?? null
-      if (!u) return { ok: false }
-      const rec = issueOtp({
-        purpose: 'activate_account',
-        userId,
-        ttlSeconds: 5 * 60
-      })
-      return { ok: true, otpSimulado: rec.otp }
+    async (
+      email: string
+    ): Promise<{ ok: true } | { ok: false; reason: string }> => {
+      try {
+        setError(null)
+        await apiClient.resendOTP(email)
+        return { ok: true }
+      } catch (err) {
+        const message =
+          err instanceof ApiError ? err.message : 'Error enviando OTP'
+        setError(message)
+        return { ok: false, reason: message }
+      }
     },
     []
   )
 
   const activateAccount = useCallback(
-    ({ userId, otp }: { userId: string; otp: string }) => {
-      const ok = verifyAndConsumeOtp({
-        purpose: 'activate_account',
-        userId,
-        otp
-      }).ok
-      if (!ok) return { ok: false }
-      const users = loadUsers()
-      const updated = users.map((u) =>
-        u.id === userId ? { ...u, activated: true } : u
-      )
-      saveUsers(updated)
-      saveSession({ userId })
-      const u = updated.find((x) => x.id === userId) ?? null
-      if (u) setUser({ ...u, role: normalizeRole(u.role) })
-      return { ok: true }
+    async ({
+      email,
+      otp
+    }: {
+      email: string
+      otp: string
+    }): Promise<{ ok: true } | { ok: false; reason: string }> => {
+      try {
+        setError(null)
+        await apiClient.verifyOTP(email, otp)
+        // Ahora puede hacer login
+        return { ok: true }
+      } catch (err) {
+        const message =
+          err instanceof ApiError ? err.message : 'Error verificando OTP'
+        setError(message)
+        return { ok: false, reason: message }
+      }
     },
     []
   )
 
   const logout = useCallback(() => {
-    clearSession()
+    apiClient.logout()
     setUser(null)
+    setError(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      isLoading,
+      error,
       login,
       register,
       requestActivationOtp,
       activateAccount,
       logout
     }),
-    [user, login, register, requestActivationOtp, activateAccount, logout]
+    [
+      user,
+      isLoading,
+      error,
+      login,
+      register,
+      requestActivationOtp,
+      activateAccount,
+      logout
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuthContext(): AuthContextValue {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth() must be used inside <AuthProvider>')
+  return ctx
 }

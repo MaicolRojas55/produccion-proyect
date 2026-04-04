@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from ..auth import get_current_active_user
 from ..db import attendance_collection, conferences_collection, sessions_collection
 from ..models import Attendance, Conference, Session, User
+from ..mongo_utils import as_object_id
 import secrets
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
@@ -34,7 +35,7 @@ async def check_attendance_conference(conference_id: str, current_user: User = D
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo estudiantes pueden registrar asistencia")
 
     # Verificar que la conferencia existe
-    conference = await conferences_collection.find_one({"_id": conference_id})
+    conference = await conferences_collection.find_one({"_id": as_object_id(conference_id)})
     if not conference:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conferencia no encontrada")
 
@@ -71,7 +72,7 @@ async def check_attendance_session(session_id: str, current_user: User = Depends
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo estudiantes pueden registrar asistencia")
 
     # Verificar que la sesión existe
-    session = await sessions_collection.find_one({"_id": session_id})
+    session = await sessions_collection.find_one({"_id": as_object_id(session_id)})
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sesión no encontrada")
 

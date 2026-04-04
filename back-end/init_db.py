@@ -170,8 +170,11 @@ async def initialize_database() -> None:
         await speakers_collection.insert_one(speaker_dict)
         print(f"  ➕ Conferencista creado: {speaker_data['name']}")
 
-    # Seed conferences
+    # Seed conferences (attach a creator id when a super_admin exists)
     print("\n🎪 Poblando conferencias adicionales...")
+    super_admin_doc = await users_collection.find_one({"role": "super_admin"})
+    creator_id = str(super_admin_doc["_id"]) if super_admin_doc else None
+
     for conference_data in DEFAULT_CONFERENCES:
         existing = await conferences_collection.find_one({
             "title": conference_data["title"],
@@ -182,8 +185,17 @@ async def initialize_database() -> None:
             continue
 
         conference_dict = conference_data.copy()
+        if creator_id:
+            conference_dict["created_by_user_id"] = creator_id
         await conferences_collection.insert_one(conference_dict)
         print(f"  ➕ Conferencia creada: {conference_data['title']}")
+
+    # Backfill created_by_user_id on legacy conference docs (optional field was missing)
+    if creator_id:
+        await conferences_collection.update_many(
+            {"created_by_user_id": {"$exists": False}},
+            {"$set": {"created_by_user_id": creator_id}},
+        )
 
     print("\n✅ Inicialización de la base de datos completada exitosamente!")
     print("\n📋 Resumen:")

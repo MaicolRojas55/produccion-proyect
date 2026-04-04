@@ -1,52 +1,469 @@
-# Backend API - CONIITI Conference System
+# Producción Conference API - Backend
 
-API REST completa para el sistema de conferencias CONIITI, construida con FastAPI y MongoDB.
+API REST desarrollada con FastAPI para la plataforma de conferencias CONIITI. Sistema completo de autenticación, gestión de eventos, inscripciones y asistencia.
 
-## Colecciones Implementadas
+## 📋 Tabla de Contenidos
 
-### 1. Autenticación y Usuarios
+- [Características](#características)
+- [Requisitos](#requisitos)
+- [Instalación](#instalación)
+- [Configuración](#configuración)
+- [Uso](#uso)
+- [API Endpoints](#api-endpoints)
+- [Modelos de Datos](#modelos-de-datos)
+- [Autenticación](#autenticación)
+- [Sistema OTP](#sistema-otp)
+- [Desarrollo](#desarrollo)
 
-- **Usuarios**: Gestión de usuarios con roles (super_admin, web_master, usuario_registrado)
-- **OTP**: Sistema de verificación por código OTP
+## ✨ Características
 
-### 2. Agenda y Sesiones
+- 🔐 **Autenticación JWT** con roles (super_admin, web_master, usuario_registrado)
+- 📧 **Verificación OTP** simulada en terminal (migración a microservicio en progreso)
+- 📅 **Gestión de Conferencias** - CRUD completo
+- 👥 **Gestión de Conferencistas** - Información de speakers
+- 🗓️ **Calendario de Eventos** - Eventos con control de audiencia
+- 📋 **Agenda Personal** - Estudiantes pueden personalizar su agenda
+- 📝 **Inscripciones a Sesiones** - Control de capacidad
+- ✅ **Sistema de Asistencia** - Registro con QR
+- 🗄️ **Base de Datos MongoDB** - Persistencia asincrónica
+- 🔄 **CORS Habilitado** - Compatible con frontend en desarrollo
 
-- **Sessions**: Sesiones de la agenda principal con horarios, speakers, ubicaciones
-- **Agenda Inscriptions**: Inscripciones de usuarios a sesiones específicas
+## 🔧 Requisitos
 
-### 3. Conferencistas
+- Python 3.9+
+- MongoDB 4.4+ (corriendo localmente en `mongodb://localhost:27017`)
+- pip (gestor de paquetes Python)
 
-- **Speakers**: Información completa de los conferencistas (bio, redes sociales, tracks)
+## 📦 Instalación
 
-### 4. Calendario
+### 1. Clonar el repositorio y navegar al backend
 
-- **Calendar Events**: Eventos personalizados del calendario con sistema de asistencia
+```bash
+cd back-end
+```
 
-### 5. Conferencias Adicionales
+### 2. Crear entorno virtual
 
-- **Conferences**: Conferencias adicionales más allá de la agenda fija
+```bash
+# En Windows
+python -m venv venv
+venv\Scripts\activate
 
-### 6. Gestión de Estudiantes
+# En macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+```
 
-- **Student Agenda**: Agenda personal de estudiantes para conferencias
-- **Attendance**: Sistema de asistencia con tokens QR
+### 3. Instalar dependencias
 
-## Endpoints Principales
+```bash
+pip install -r requirements.txt
+```
 
-### Autenticación
+### 4. Configurar archivo .env
 
-- `POST /auth/register` - Registro de usuario
-- `POST /auth/verify-otp` - Verificación OTP
-- `POST /auth/token` - Login
-- `GET /auth/me` - Información del usuario actual
+Crear archivo `.env` en el directorio `back-end/`:
 
-### Sesiones de Agenda
+```env
+# Base de Datos
+MONGODB_URI=mongodb://localhost:27017
+MONGODB_DB=produccion_db
 
-- `GET /sessions/` - Lista todas las sesiones
-- `GET /sessions/agenda` - Agenda completa organizada por días
-- `POST /sessions/` - Crear sesión (admin)
-- `PUT /sessions/{id}` - Actualizar sesión (admin)
-- `DELETE /sessions/{id}` - Eliminar sesión (admin)
+# JWT
+JWT_SECRET_KEY=change-this-secret-value
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRES_MINUTES=60
+
+# OTP
+OTP_LENGTH=6
+OTP_EXPIRE_MINUTES=10
+
+# Email SMTP (TEMPORALMENTE NO UTILIZADOS - Para microservicio futuro)
+# SMTP_SERVER=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_USERNAME=
+# SMTP_PASSWORD=
+# SMTP_FROM_EMAIL=
+# SMTP_FROM_NAME=CONIITI Conference
+```
+
+## 🚀 Uso
+
+### Iniciar el servidor
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+El servidor estará disponible en: `http://localhost:8000`
+
+- **Documentación Swagger**: `http://localhost:8000/docs`
+- **Documentación ReDoc**: `http://localhost:8000/redoc`
+
+### Ubicación de los logs de OTP
+
+Cuando un usuario se registra o solicita verificación OTP, el código aparecerá en la terminal:
+
+```
+================================================================================
+🔐 VERIFICACIÓN OTP - CONIITI CONFERENCE (TEMPORALMENTE SIMULADA)
+================================================================================
+
+Para: usuario@example.com
+Hola Usuario!
+
+Tu código de verificación es:
+
+    ┌─────────────────────┐
+    │  123456  │
+    └─────────────────────┘
+
+⏱️  Este código expira en 10 minutos.
+⚠️  No compartas este código con nadie.
+
+================================================================================
+```
+
+**Copia el código de 6 dígitos e úsalo en el frontend para completar la verificación.**
+
+## 📡 API Endpoints
+
+### Autenticación (`/auth`)
+
+| Método | Endpoint           | Descripción             | Autenticación |
+| ------ | ------------------ | ----------------------- | ------------- |
+| POST   | `/auth/register`   | Registrar nuevo usuario | ❌ No         |
+| POST   | `/auth/token`      | Login / obtener JWT     | ❌ No         |
+| POST   | `/auth/verify-otp` | Verificar código OTP    | ❌ No         |
+| POST   | `/auth/resend-otp` | Reenviar código OTP     | ❌ No         |
+| GET    | `/auth/me`         | Obtener usuario actual  | ✅ Sí         |
+
+### Usuarios (`/users`)
+
+| Método | Endpoint           | Descripción            | Autenticación | Rol           |
+| ------ | ------------------ | ---------------------- | ------------- | ------------- |
+| GET    | `/users/`          | Listar usuarios        | ✅ Sí         | Administrador |
+| GET    | `/users/{user_id}` | Obtener usuario por ID | ✅ Sí         | Administrador |
+| GET    | `/users/me`        | Obtener usuario actual | ✅ Sí         | Cualquiera    |
+
+### Conferencias (`/conferences`)
+
+| Método | Endpoint            | Descripción    | Autenticación | Rol           |
+| ------ | ------------------- | -------------- | ------------- | ------------- |
+| GET    | `/conferences/`     | Listar todas   | ❌ No         | -             |
+| GET    | `/conferences/{id}` | Obtener por ID | ❌ No         | -             |
+| POST   | `/conferences/`     | Crear          | ✅ Sí         | Administrador |
+| PUT    | `/conferences/{id}` | Actualizar     | ✅ Sí         | Administrador |
+| DELETE | `/conferences/{id}` | Eliminar       | ✅ Sí         | Administrador |
+
+### Conferencistas (`/speakers`)
+
+| Método | Endpoint         | Descripción    | Autenticación | Rol           |
+| ------ | ---------------- | -------------- | ------------- | ------------- |
+| GET    | `/speakers/`     | Listar todos   | ❌ No         | -             |
+| GET    | `/speakers/{id}` | Obtener por ID | ❌ No         | -             |
+| POST   | `/speakers/`     | Crear          | ✅ Sí         | Administrador |
+| PUT    | `/speakers/{id}` | Actualizar     | ✅ Sí         | Administrador |
+| DELETE | `/speakers/{id}` | Eliminar       | ✅ Sí         | Administrador |
+
+### Sesiones de Agenda (`/sessions`)
+
+| Método | Endpoint           | Descripción       | Autenticación | Rol           |
+| ------ | ------------------ | ----------------- | ------------- | ------------- |
+| GET    | `/sessions/`       | Listar todas      | ❌ No         | -             |
+| GET    | `/sessions/agenda` | Agenda organizada | ❌ No         | -             |
+| POST   | `/sessions/`       | Crear             | ✅ Sí         | Administrador |
+| PUT    | `/sessions/{id}`   | Actualizar        | ✅ Sí         | Administrador |
+| DELETE | `/sessions/{id}`   | Eliminar          | ✅ Sí         | Administrador |
+
+### Eventos Calendario (`/calendar`)
+
+| Método | Endpoint         | Descripción    | Autenticación | Rol           |
+| ------ | ---------------- | -------------- | ------------- | ------------- |
+| GET    | `/calendar/`     | Listar eventos | ✅ Sí         | Cualquiera    |
+| GET    | `/calendar/{id}` | Obtener por ID | ✅ Sí         | Cualquiera    |
+| POST   | `/calendar/`     | Crear evento   | ✅ Sí         | Administrador |
+| PUT    | `/calendar/{id}` | Actualizar     | ✅ Sí         | Administrador |
+| DELETE | `/calendar/{id}` | Eliminar       | ✅ Sí         | Administrador |
+
+### Agenda del Estudiante (`/student-agenda`)
+
+| Método | Endpoint                          | Descripción             | Autenticación |
+| ------ | --------------------------------- | ----------------------- | ------------- |
+| GET    | `/student-agenda/`                | Obtener agenda personal | ✅ Sí         |
+| POST   | `/student-agenda/{conference_id}` | Agregar conferencia     | ✅ Sí         |
+| DELETE | `/student-agenda/{conference_id}` | Remover conferencia     | ✅ Sí         |
+
+### Inscripciones a Sesiones (`/agenda-inscriptions`)
+
+| Método | Endpoint                                          | Descripción          | Autenticación |
+| ------ | ------------------------------------------------- | -------------------- | ------------- |
+| GET    | `/agenda-inscriptions/`                           | Sesiones inscritas   | ✅ Sí         |
+| POST   | `/agenda-inscriptions/{session_id}`               | Inscribirse          | ✅ Sí         |
+| DELETE | `/agenda-inscriptions/{session_id}`               | Cancelar inscripción | ✅ Sí         |
+| GET    | `/agenda-inscriptions/session/{session_id}/count` | Contar inscritos     | ❌ No         |
+
+### Asistencia (`/attendance`)
+
+| Método | Endpoint                                 | Descripción                   | Autenticación |
+| ------ | ---------------------------------------- | ----------------------------- | ------------- |
+| GET    | `/attendance/`                           | Registro de asistencia        | ✅ Sí         |
+| POST   | `/attendance/conference/{conference_id}` | Registrar asistencia (Conf)   | ✅ Sí         |
+| POST   | `/attendance/session/{session_id}`       | Registrar asistencia (Sesión) | ✅ Sí         |
+
+## 🔑 Autenticación
+
+### Flujo de Autenticación
+
+1. **Registro**:
+
+   ```bash
+   POST /auth/register
+   {
+     "full_name": "Juan Pérez",
+     "email": "juan@example.com",
+     "password": "SecurePass123!",
+     "role": "usuario_registrado"
+   }
+   ```
+
+   → Retorna el código OTP en la terminal
+
+2. **Verificar OTP**:
+
+   ```bash
+   POST /auth/verify-otp?email=juan@example.com&code=123456
+   ```
+
+   → Activa la cuenta del usuario
+
+3. **Login**:
+
+   ```bash
+   POST /auth/token
+   {
+     "email": "juan@example.com",
+     "password": "SecurePass123!"
+   }
+   ```
+
+   → Retorna `access_token` (JWT)
+
+4. **Usar Token**:
+   ```bash
+   GET /auth/me
+   Authorization: Bearer <access_token>
+   ```
+
+### Roles
+
+- **super_admin**: Acceso completo a CRUD de todas las entidades
+- **web_master**: Igual a super_admin (staff)
+- **usuario_registrado**: Acceso limitado (ver conferencias, inscribirse, marcar asistencia)
+
+## 📧 Sistema OTP
+
+### Estado Actual
+
+El sistema OTP está **TEMPORALMENTE SIMULADO** para facilitar el desarrollo sin requerir configuración de email.
+
+### Comportamiento
+
+1. Cuando un usuario **se registra** → código OTP aparece en la terminal del backend
+2. Usuario copia código de terminal e ingresa en el frontend
+3. El código se valida localmente y ya funciona completamente
+
+### Migración Futura
+
+En la **fase final**, la verificación OTP será manejada por un **microservicio dedicado** que:
+
+- Enviará emails reales
+- Manejará reintentos
+- Gestionará rate limiting
+- Será independiente del API principal
+
+### Para Agregar Credenciales de Email (Futuro)
+
+1. Obtener App Password de Gmail
+2. Actualizar `.env` con las credenciales
+3. Descomentar import de `aiosmtplib` en `requirements.txt`
+4. Restaurar métodos originales en `email_service.py`
+
+## 📊 Modelos de Datos
+
+### User
+
+```python
+{
+  "_id": "ObjectId",
+  "full_name": "string",
+  "email": "string (único)",
+  "hashed_password": "string",
+  "role": "super_admin | web_master | usuario_registrado",
+  "is_verified": "boolean",
+  "is_active": "boolean",
+  "created_at": "datetime"
+}
+```
+
+### Conference
+
+```python
+{
+  "_id": "ObjectId",
+  "title": "string",
+  "description": "string",
+  "start_at": "datetime",
+  "end_at": "datetime",
+  "location": "string",
+  "capacity": "int (opcional)",
+  "speakers": ["speaker_id"]
+}
+```
+
+### Session
+
+```python
+{
+  "_id": "ObjectId",
+  "title": "string",
+  "description": "string",
+  "day": "string (e.g., 'Día 1')",
+  "start_time": "string (HH:MM)",
+  "end_time": "string (HH:MM)",
+  "location": "string",
+  "capacity": "int (opcional)",
+  "speaker_id": "ObjectId (opcional)"
+}
+```
+
+### Speaker
+
+```python
+{
+  "_id": "ObjectId",
+  "name": "string",
+  "title": "string",
+  "bio": "string",
+  "photo_url": "string (opcional)"
+}
+```
+
+### CalendarEvent
+
+```python
+{
+  "_id": "ObjectId",
+  "title": "string",
+  "description": "string (opcional)",
+  "start_at": "datetime",
+  "end_at": "datetime",
+  "audience": "todos | registrados | staff",
+  "is_announcement": "boolean",
+  "creator_id": "ObjectId"
+}
+```
+
+## 🖥️ Desarrollo
+
+### Estructura del Proyecto
+
+```
+back-end/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                 # Aplicación FastAPI principal
+│   ├── config.py               # Configuraciones y variables de entorno
+│   ├── auth.py                 # Funciones de autenticación (JWT, passwords)
+│   ├── db.py                   # Conexión a MongoDB
+│   ├── models.py               # Modelos Pydantic
+│   ├── email_service.py        # Servicio OTP simulado
+│   └── routes/
+│       ├── auth.py             # Endpoints de autenticación
+│       ├── users.py            # Endpoints de usuarios
+│       ├── sessions.py         # Endpoints de sesiones
+│       ├── speakers.py         # Endpoints de conferencistas
+│       ├── calendar.py         # Endpoints de calendario
+│       ├── conferences.py      # Endpoints de conferencias
+│       ├── student_agenda.py   # Endpoints de agenda personal
+│       ├── agenda_inscriptions.py # Endpoints de inscripciones
+│       └── attendance.py       # Endpoints de asistencia
+├── requirements.txt            # Dependencias de Python
+├── pyproject.toml              # Configuración del proyecto
+├── .env                        # Variables de entorno
+└── README.md                   # Este archivo
+```
+
+### Agregar un Nuevo Endpoint
+
+1. Crear función en el router correspondiente (`app/routes/*.py`)
+2. Usar decoradores `@router.get()`, `@router.post()`, etc.
+3. Agregar autenticación con `Depends(get_current_user)` si es necesario
+4. Importar router en `main.py`: `app.include_router(nuevo_router)`
+
+### Testing de Endpoints
+
+Usar la documentación Swagger automática:
+
+```bash
+http://localhost:8000/docs
+```
+
+Aquí puedes probar todos los endpoints directamente.
+
+### Base de Datos
+
+MongoDB se usa con el driver async **Motor**. Las colecciones se crean automáticamente.
+
+Colecciones principales:
+
+- `users` - Usuarios del sistema
+- `otps` - Códigos OTP temporales
+- `conferences` - Conferencias principales
+- `speakers` - Información de conferencistas
+- `sessions` - Sesiones de la agenda
+- `calendar_events` - Eventos del calendario
+- `student_agendas` - Agendas personales
+- `agenda_inscriptions` - Inscripciones a sesiones
+- `attendance` - Registros de asistencia
+
+## 🐛 Troubleshooting
+
+### Error: `connection refused` en MongoDB
+
+- Verificar que MongoDB está corriendo: `mongosh` en terminal
+- Si no está instalado, instalar desde https://www.mongodb.com/try
+
+### Error: 401 Unauthorized
+
+- Verificar que el token está en el header `Authorization: Bearer <token>`
+- Tokens expiran tras 60 minutos (configurable en `.env`)
+- Re-hacer login para obtener nuevo token
+
+### Error: 403 Forbidden
+
+- Usuario no tiene permisos para esta acción
+- Rol requiere ser `super_admin` o `web_master`
+
+### OTP no aparece en terminal
+
+- Verifcar que el backend está corriendo en la terminal correcta
+- El código aparece cuando el usuario se registra o solicita reenvío
+- Código válido por 10 minutos
+
+## 📝 Licencia
+
+Este proyecto es parte del sistema CONIITI Conference.
+
+## 👥 Contacto
+
+Para preguntas o problemas, contactar al equipo de desarrollo.
+
+---
+
+**Última actualización**: Abril 2026
+**Versión API**: 0.1.0
+**Estado OTP**: 🔄 Temporalmente Simulado (Microservicio en progreso)
 
 ### Conferencistas
 
