@@ -76,3 +76,9 @@ async def get_current_admin_user(current_user: Annotated[User, Depends(get_curre
     if current_user.role not in ("super_admin", "web_master"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     return current_user
+
+
+async def get_current_super_admin(current_user: Annotated[User, Depends(get_current_active_user)]) -> User:
+    if current_user.role != "super_admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo el Super Admin puede realizar esta acción")
+    return current_user

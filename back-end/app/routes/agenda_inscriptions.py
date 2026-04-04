@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from ..auth import get_current_active_user
 from ..db import agenda_inscriptions_collection, sessions_collection
-from ..models import AgendaInscription, Session, User
+from ..models import Session, User
+from ..mongo_utils import as_object_id, normalize_mongo_list_ids
 
 router = APIRouter(prefix="/agenda-inscriptions", tags=["agenda-inscriptions"])
 
@@ -20,7 +21,7 @@ async def get_my_inscriptions(current_user: User = Depends(get_current_active_us
         return []
 
     # Obtener las sesiones
-    sessions_cursor = sessions_collection.find({"_id": {"$in": session_ids}})
+    sessions_cursor = sessions_collection.find({"_id": {"$in": normalize_mongo_list_ids(session_ids)}})
     sessions = []
     async for session in sessions_cursor:
         sessions.append(Session(**session))
@@ -32,7 +33,7 @@ async def get_my_inscriptions(current_user: User = Depends(get_current_active_us
 async def inscribe_to_session(session_id: str, current_user: User = Depends(get_current_active_user)):
     """Inscribirse a una sesión de la agenda"""
     # Verificar que la sesión existe
-    session = await sessions_collection.find_one({"_id": session_id})
+    session = await sessions_collection.find_one({"_id": as_object_id(session_id)})
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sesión no encontrada")
 

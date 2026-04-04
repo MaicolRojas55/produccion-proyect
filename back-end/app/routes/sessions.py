@@ -3,6 +3,7 @@ from typing import List
 from ..auth import get_current_admin_user
 from ..db import sessions_collection
 from ..models import Session, DaySchedule
+from ..mongo_utils import as_object_id
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -61,7 +62,7 @@ async def update_session(session_id: str, session: Session, current_user=Depends
     session_dict.pop("_id", None)
 
     result = await sessions_collection.update_one(
-        {"_id": session_id},
+        {"_id": as_object_id(session_id)},
         {"$set": session_dict}
     )
 
@@ -74,7 +75,7 @@ async def update_session(session_id: str, session: Session, current_user=Depends
 @router.delete("/{session_id}")
 async def delete_session(session_id: str, current_user=Depends(get_current_admin_user)):
     """Eliminar una sesión (solo admin)"""
-    result = await sessions_collection.delete_one({"_id": session_id})
+    result = await sessions_collection.delete_one({"_id": as_object_id(session_id)})
 
     if result.deleted_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sesión no encontrada")

@@ -3,6 +3,7 @@ from typing import List
 from ..auth import get_current_active_user, get_current_admin_user
 from ..db import conferences_collection
 from ..models import Conference, User
+from ..mongo_utils import as_object_id
 
 router = APIRouter(prefix="/conferences", tags=["conferences"])
 
@@ -20,7 +21,7 @@ async def get_conferences():
 @router.get("/{conference_id}", response_model=Conference)
 async def get_conference(conference_id: str):
     """Obtener una conferencia específica"""
-    conference_doc = await conferences_collection.find_one({"_id": conference_id})
+    conference_doc = await conferences_collection.find_one({"_id": as_object_id(conference_id)})
     if not conference_doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conferencia no encontrada")
     return Conference(**conference_doc)
@@ -47,18 +48,18 @@ async def create_conference(conference: Conference, current_user: User = Depends
 async def update_conference(conference_id: str, conference: Conference, current_user: User = Depends(get_current_active_user)):
     """Actualizar una conferencia"""
     # Verificar que el usuario creó la conferencia o es admin
-    existing_conference = await conferences_collection.find_one({"_id": conference_id})
+    existing_conference = await conferences_collection.find_one({"_id": as_object_id(conference_id)})
     if not existing_conference:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conferencia no encontrada")
 
-    if existing_conference["created_by_user_id"] != current_user.id and current_user.role not in ["super_admin", "web_master"]:
+    if existing_conference.get("created_by_user_id") != current_user.id and current_user.role not in ["super_admin", "web_master"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para editar esta conferencia")
 
     conference_dict = conference.dict(exclude_unset=True)
     conference_dict.pop("_id", None)
 
     result = await conferences_collection.update_one(
-        {"_id": conference_id},
+        {"_id": as_object_id(conference_id)},
         {"$set": conference_dict}
     )
 
@@ -69,12 +70,12 @@ async def update_conference(conference_id: str, conference: Conference, current_
 async def delete_conference(conference_id: str, current_user: User = Depends(get_current_active_user)):
     """Eliminar una conferencia"""
     # Verificar que el usuario creó la conferencia o es admin
-    existing_conference = await conferences_collection.find_one({"_id": conference_id})
+    existing_conference = await conferences_collection.find_one({"_id": as_object_id(conference_id)})
     if not existing_conference:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conferencia no encontrada")
 
-    if existing_conference["created_by_user_id"] != current_user.id and current_user.role not in ["super_admin", "web_master"]:
+    if existing_conference.get("created_by_user_id") != current_user.id and current_user.role not in ["super_admin", "web_master"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para eliminar esta conferencia")
 
-    result = await conferences_collection.delete_one({"_id": conference_id})
+    result = await conferences_collection.delete_one({"_id": as_object_id(conference_id)})
     return {"message": "Conferencia eliminada"}

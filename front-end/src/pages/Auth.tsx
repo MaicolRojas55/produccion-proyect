@@ -46,9 +46,8 @@ export default function Auth() {
   const [loginPassword, setLoginPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
 
-  const [nombre, setNombre] = useState('')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [telefono, setTelefono] = useState('')
   const [password, setPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [pendingActivation, setPendingActivation] = useState<{
@@ -75,28 +74,20 @@ export default function Auth() {
     setOtpError(null)
 
     // Validaciones del frontend
-    const nameError = validation.validateName(nombre)
+    const nameError = validation.validateName(fullName)
     const emailError = validation.validateEmail(email)
-    const phoneError = validation.validatePhone(telefono)
     const passwordError = validation.validatePassword(password)
 
-    if (
-      nameError ||
-      emailError ||
-      phoneError ||
-      passwordError ||
-      !acceptTerms
-    ) {
+    if (nameError || emailError || passwordError || !acceptTerms) {
       setRegisterInfo('Por favor corrige los errores en el formulario')
       return
     }
 
     setIsLoading(true)
     try {
-      const result = register({
-        nombre: nombre.trim(),
+      const result = await register({
+        full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
-        telefono: telefono.trim(),
         password,
         role: 'usuario_registrado'
       })
@@ -108,7 +99,7 @@ export default function Auth() {
           setRegisterInfo('Error al registrar usuario')
         }
       } else {
-        const otpResult = requestActivationOtp(result.userId)
+        const otpResult = await requestActivationOtp(email.trim().toLowerCase())
         setPendingActivation({
           email: email.trim().toLowerCase(),
           userId: result.userId,
@@ -120,9 +111,9 @@ export default function Auth() {
           toast.error('Error al generar el código OTP.')
         } else {
           setRegisterInfo(
-            `Cuenta creada correctamente. Código OTP simulado: ${otpResult.otpSimulado}`
+            'Cuenta creada correctamente. Ingresa el código OTP para activar.'
           )
-          toast.success('Cuenta creada. Ingresa el OTP simulado para activar.')
+          toast.success('Cuenta creada. Ingresa el OTP para activar.')
         }
       }
     } finally {
@@ -143,8 +134,8 @@ export default function Auth() {
 
     setIsLoading(true)
     try {
-      const result = activateAccount({
-        userId: pendingActivation.userId,
+      const result = await activateAccount({
+        email: pendingActivation.email,
         otp: otp.trim()
       })
 
@@ -164,11 +155,11 @@ export default function Auth() {
 
     setIsResendingOTP(true)
     try {
-      const otpResult = requestActivationOtp(pendingActivation.userId)
+      const otpResult = await requestActivationOtp(pendingActivation.email)
       if (!otpResult.ok) {
         toast.error('Error al generar el código OTP.')
       } else {
-        toast.success(`Nuevo código OTP simulado: ${otpResult.otpSimulado}`)
+        toast.success('Código OTP reenviado correctamente')
       }
     } finally {
       setIsResendingOTP(false)
@@ -185,7 +176,7 @@ export default function Auth() {
 
     setIsLoading(true)
     try {
-      const result = login({
+      const result = await login({
         email: loginEmail.trim().toLowerCase(),
         password: loginPassword
       })
@@ -278,8 +269,8 @@ export default function Auth() {
                   <ValidatedInput
                     id="reg-name"
                     label="Nombre completo"
-                    value={nombre}
-                    onChange={handleInputChange(setNombre)}
+                    value={fullName}
+                    onChange={handleInputChange(setFullName)}
                     placeholder="Tu nombre completo"
                     validation={validation.validateName}
                     required
@@ -294,15 +285,6 @@ export default function Auth() {
                     placeholder="tu@correo.com"
                     validation={validation.validateEmail}
                     required
-                  />
-
-                  <ValidatedInput
-                    id="reg-phone"
-                    label="Celular"
-                    value={telefono}
-                    onChange={handleInputChange(setTelefono)}
-                    placeholder="+57 300 000 0000"
-                    validation={validation.validatePhone}
                   />
 
                   <ValidatedInput

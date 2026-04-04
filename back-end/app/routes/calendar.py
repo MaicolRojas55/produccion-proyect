@@ -3,6 +3,7 @@ from typing import List
 from ..auth import get_current_active_user, get_current_admin_user
 from ..db import calendar_events_collection
 from ..models import CalendarEvent, User
+from ..mongo_utils import as_object_id
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
@@ -31,7 +32,7 @@ async def get_calendar_events(current_user: User = Depends(get_current_active_us
 @router.get("/{event_id}", response_model=CalendarEvent)
 async def get_calendar_event(event_id: str, current_user: User = Depends(get_current_active_user)):
     """Obtener un evento específico"""
-    event_doc = await calendar_events_collection.find_one({"_id": event_id})
+    event_doc = await calendar_events_collection.find_one({"_id": as_object_id(event_id)})
     if not event_doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
 
@@ -66,7 +67,7 @@ async def create_calendar_event(event: CalendarEvent, current_user: User = Depen
 async def update_calendar_event(event_id: str, event: CalendarEvent, current_user: User = Depends(get_current_active_user)):
     """Actualizar un evento del calendario"""
     # Verificar que el usuario creó el evento o es admin
-    existing_event = await calendar_events_collection.find_one({"_id": event_id})
+    existing_event = await calendar_events_collection.find_one({"_id": as_object_id(event_id)})
     if not existing_event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
 
@@ -77,7 +78,7 @@ async def update_calendar_event(event_id: str, event: CalendarEvent, current_use
     event_dict.pop("_id", None)
 
     result = await calendar_events_collection.update_one(
-        {"_id": event_id},
+        {"_id": as_object_id(event_id)},
         {"$set": event_dict}
     )
 
@@ -88,21 +89,21 @@ async def update_calendar_event(event_id: str, event: CalendarEvent, current_use
 async def delete_calendar_event(event_id: str, current_user: User = Depends(get_current_active_user)):
     """Eliminar un evento del calendario"""
     # Verificar que el usuario creó el evento o es admin
-    existing_event = await calendar_events_collection.find_one({"_id": event_id})
+    existing_event = await calendar_events_collection.find_one({"_id": as_object_id(event_id)})
     if not existing_event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
 
     if existing_event["created_by_user_id"] != current_user.id and current_user.role not in ["super_admin", "web_master"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para eliminar este evento")
 
-    result = await calendar_events_collection.delete_one({"_id": event_id})
+    result = await calendar_events_collection.delete_one({"_id": as_object_id(event_id)})
     return {"message": "Evento eliminado"}
 
 
 @router.post("/{event_id}/attend")
 async def attend_event(event_id: str, current_user: User = Depends(get_current_active_user)):
     """Marcar asistencia a un evento"""
-    event_doc = await calendar_events_collection.find_one({"_id": event_id})
+    event_doc = await calendar_events_collection.find_one({"_id": as_object_id(event_id)})
     if not event_doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
 
@@ -115,7 +116,7 @@ async def attend_event(event_id: str, current_user: User = Depends(get_current_a
     # Agregar usuario a la lista de asistentes si no está ya
     if current_user.id not in event.attendees:
         await calendar_events_collection.update_one(
-            {"_id": event_id},
+            {"_id": as_object_id(event_id)},
             {"$push": {"attendees": current_user.id}}
         )
 
@@ -126,7 +127,7 @@ async def attend_event(event_id: str, current_user: User = Depends(get_current_a
 async def unattend_event(event_id: str, current_user: User = Depends(get_current_active_user)):
     """Cancelar asistencia a un evento"""
     await calendar_events_collection.update_one(
-        {"_id": event_id},
+        {"_id": as_object_id(event_id)},
         {"$pull": {"attendees": current_user.id}}
     )
 
