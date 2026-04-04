@@ -46,20 +46,17 @@ async def register(user_data: UserCreate):
     }
     result = await otps_collection.insert_one(otp_doc)
 
-    # Enviar código OTP por email
-    email_sent = await email_service.send_otp_email(
+    # Mostrar código OTP en terminal (TEMPORALMENTE SIMULADO)
+    # En fase final, esto será manejado por microservicio de OTP
+    otp_displayed = await email_service.send_otp_email(
         to_email=user_data.email,
         otp_code=code,
         user_name=user_data.full_name
     )
 
-    if not email_sent:
-        # Si falla el envío, aún así creamos la cuenta pero informamos del problema
-        print(f"⚠️  No se pudo enviar email OTP a {user_data.email}")
-
     return {
-        "message": "Usuario registrado. Revisa tu email para el código de verificación.",
-        "email_sent": email_sent,
+        "message": "Usuario registrado. El código de verificación aparecerá en la terminal del backend.",
+        "email_sent": otp_displayed,
         "otp_id": str(result.inserted_id)
     }
 
@@ -76,7 +73,7 @@ async def verify_otp(email: EmailStr, code: str):
     await otps_collection.update_one({"_id": otp_doc["_id"]}, {"$set": {"verified": True}})
     await users_collection.update_one({"email": email}, {"$set": {"is_verified": True}})
 
-    # Enviar email de bienvenida
+    # Mostrar mensaje de bienvenida en terminal (TEMPORALMENTE SIMULADO)
     user_doc = await users_collection.find_one({"email": email})
     if user_doc:
         await email_service.send_welcome_email(
@@ -114,16 +111,17 @@ async def resend_otp(email: EmailStr):
     # Insertar nuevo OTP
     result = await otps_collection.insert_one(otp_doc)
 
-    # Enviar código OTP por email
-    email_sent = await email_service.send_otp_email(
+    # Mostrar código OTP en terminal (TEMPORALMENTE SIMULADO)
+    # En fase final, esto será manejado por microservicio de OTP
+    otp_displayed = await email_service.send_otp_email(
         to_email=email,
         otp_code=code,
         user_name=user_doc.get("full_name", "Usuario")
     )
 
     return {
-        "message": "Nuevo código OTP enviado a tu email.",
-        "email_sent": email_sent,
+        "message": "Nuevo código OTP generado. Aparecerá en la terminal del backend.",
+        "email_sent": otp_displayed,
         "otp_id": str(result.inserted_id)
     }
 
