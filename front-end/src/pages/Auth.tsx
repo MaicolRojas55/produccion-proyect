@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { useFormValidation } from '@/hooks/useFormValidation'
 import { ValidatedInput } from '@/components/ui/validated-input'
-import { apiClient, ApiError } from '@/lib/api'
+import { useAuth } from '@/features/auth/useAuth'
 import { toast } from 'sonner'
 
 function useQueryTab() {
@@ -53,6 +53,7 @@ export default function Auth() {
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [pendingActivation, setPendingActivation] = useState<{
     email: string
+    userId: string
     otpSent: boolean
   } | null>(null)
   const [otp, setOtp] = useState('')
@@ -61,9 +62,11 @@ export default function Auth() {
   const [registerInfo, setRegisterInfo] = useState<string | null>(null)
   const [otpError, setOtpError] = useState<string | null>(null)
 
+  const { login, register, requestActivationOtp, activateAccount } = useAuth()
+
   const goAfterAuth = (isStaff: boolean) => {
     const from =
-      location.state?.from?.pathname || (isStaff ? '/super-admin' : '/agenda')
+      location.state?.from?.pathname || (isStaff ? '/dashboard' : '/agenda')
     navigate(from, { replace: true })
   }
 
@@ -90,28 +93,37 @@ export default function Auth() {
 
     setIsLoading(true)
     try {
-      const response = await apiClient.post('/auth/register', {
-        full_name: nombre.trim(),
+      const result = register({
+        nombre: nombre.trim(),
         email: email.trim().toLowerCase(),
+        telefono: telefono.trim(),
         password,
         role: 'usuario_registrado'
       })
 
-      setPendingActivation({
-        email: email.trim().toLowerCase(),
-        otpSent: true
-      })
-      setTab('register') // Stay on register tab to show OTP input
-      toast.success('Código OTP enviado a tu email')
-    } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.status === 400 && error.message.includes('email')) {
+      if (result.ok === false) {
+        if (result.reason === 'EMAIL_TAKEN') {
           setRegisterInfo('Este email ya está registrado')
         } else {
-          setRegisterInfo(error.message || 'Error al registrar usuario')
+          setRegisterInfo('Error al registrar usuario')
         }
       } else {
-        setRegisterInfo('Error de conexión. Intenta nuevamente.')
+        const otpResult = requestActivationOtp(result.userId)
+        setPendingActivation({
+          email: email.trim().toLowerCase(),
+          userId: result.userId,
+          otpSent: true
+        })
+        setTab('register')
+        if (!otpResult.ok) {
+          setRegisterInfo('No se pudo generar el OTP de activación.')
+          toast.error('Error al generar el código OTP.')
+        } else {
+          setRegisterInfo(
+            `Cuenta creada correctamente. Código OTP simulado: ${otpResult.otpSimulado}`
+          )
+          toast.success('Cuenta creada. Ingresa el OTP simulado para activar.')
+        }
       }
     } finally {
       setIsLoading(false)
@@ -131,34 +143,16 @@ export default function Auth() {
 
     setIsLoading(true)
     try {
-      await apiClient.post('/auth/verify-otp', {
-        email: pendingActivation.email,
-        code: otp.trim()
+      const result = activateAccount({
+        userId: pendingActivation.userId,
+        otp: otp.trim()
       })
 
-      toast.success('Cuenta verificada exitosamente')
-      // Auto-login after verification
-      const loginResult = await apiClient.post<{ access_token: string }>(
-        '/auth/token',
-        {
-          email: pendingActivation.email,
-          password: password // Use the password from registration
-        }
-      )
-
-      if (loginResult.access_token) {
-        localStorage.setItem('token', loginResult.access_token)
-        goAfterAuth(false) // New users are not staff
-      }
-    } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.status === 400) {
-          setOtpError('Código OTP inválido o expirado')
-        } else {
-          setOtpError(error.message || 'Error al verificar código')
-        }
+      if (!result.ok) {
+        setOtpError('Código OTP inválido o expirado')
       } else {
-        setOtpError('Error de conexión. Intenta nuevamente.')
+        toast.success('Cuenta verificada exitosamente')
+        goAfterAuth(false)
       }
     } finally {
       setIsLoading(false)
@@ -170,12 +164,12 @@ export default function Auth() {
 
     setIsResendingOTP(true)
     try {
-      await apiClient.post('/auth/resend-otp', {
-        email: pendingActivation.email
-      })
-      toast.success('Nuevo código OTP enviado')
-    } catch (error) {
-      toast.error('Error al reenviar código OTP')
+      const otpResult = requestActivationOtp(pendingActivation.userId)
+      if (!otpResult.ok) {
+        toast.error('Error al generar el código OTP.')
+      } else {
+        toast.success(`Nuevo código OTP simulado: ${otpResult.otpSimulado}`)
+      }
     } finally {
       setIsResendingOTP(false)
     }
@@ -191,35 +185,16 @@ export default function Auth() {
 
     setIsLoading(true)
     try {
-      const response = await apiClient.post<{ access_token: string }>(
-        '/auth/token',
-        {
-          email: loginEmail.trim().toLowerCase(),
-          password: loginPassword
-        }
-      )
+      const result = login({
+        email: loginEmail.trim().toLowerCase(),
+        password: loginPassword
+      })
 
-      if (response.access_token) {
-        localStorage.setItem('token', response.access_token)
-        // Get user info to determine redirect
-        const userInfo = await apiClient.get<{ role: string }>(
-          '/auth/me',
-          response.access_token
-        )
-        goAfterAuth(userInfo.role !== 'usuario_registrado')
-        toast.success('Inicio de sesión exitoso')
-      }
-    } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.status === 401) {
-          setLoginError('Credenciales inválidas')
-        } else if (error.status === 403) {
-          setLoginError('Cuenta no verificada. Revisa tu email.')
-        } else {
-          setLoginError(error.message || 'Error al iniciar sesión')
-        }
+      if (!result.ok) {
+        setLoginError('Credenciales inválidas')
       } else {
-        setLoginError('Error de conexión. Intenta nuevamente.')
+        toast.success('Inicio de sesión exitoso')
+        goAfterAuth(result.user.role !== 'usuario_registrado')
       }
     } finally {
       setIsLoading(false)
