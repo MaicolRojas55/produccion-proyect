@@ -24,6 +24,18 @@ services:
     networks:
       - coniiti-net
 
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8001:8001"
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - LOG_LEVEL=info
+    depends_on:
+      - backend
+    networks:
+      - coniiti-net
+
   backend:
     build: ./back-end
     ports:
@@ -32,6 +44,16 @@ services:
       - MONGODB_URL=mongodb://mongo:27017/coniiti
     depends_on:
       - mongo
+    networks:
+      - coniiti-net
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "8002:8002"
+    environment:
+      - NOTIFICATION_PORT=8002
+      - LOG_LEVEL=info
     networks:
       - coniiti-net
 
