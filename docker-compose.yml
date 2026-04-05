@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+
+  frontend:
+    build: ./front-end
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - gateway
+    networks:
+      - coniiti-net
+
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+    networks:
+      - coniiti-net
+
+  backend:
+    build: ./back-end
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://mongo:27017/coniiti
+    depends_on:
+      - mongo
+    networks:
+      - coniiti-net
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - coniiti-net
+
+volumes:
+  mongo-data:
+
+networks:
+  coniiti-net:
+    driver: bridge
