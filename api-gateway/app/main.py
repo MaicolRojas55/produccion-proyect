@@ -2,13 +2,17 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .middleware import MiddlewareAuditoriaGateway, MiddlewareRateLimit
+from .routes import enrutador_gateway
+
 # Configurar logger para el gateway
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 # Inicializar aplicación FastAPI del Gateway
 app = FastAPI(
     title="API Gateway",
-    version="0.1.0",
+    version="0.2.0",
     description="Gateway centralizado para enrutamiento de microservicios"
 )
 
@@ -33,17 +37,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(MiddlewareAuditoriaGateway)
+app.add_middleware(MiddlewareRateLimit)
 
 # Endpoint de verificación del estado del gateway
 @app.get("/health")
 async def verificar_estado():
-    """Verifica que el gateway esté activo y listo para enrutar solicitudes""" 
-    return {"estado": "saludable", "servicio": "api-gateway", "version": "0.1.0"}
+    """Verifica que el gateway esté activo y listo para enrutar solicitudes."""
+    return {"estado": "saludable", "servicio": "api-gateway", "version": "0.2.0"}
 
 
 # Endpoint raíz del gateway
 @app.get("/")
 async def raiz():
-    """Punto de entrada del API Gateway""" 
-    return {"mensaje": "API Gateway v0.1.0 - Listo", "función": "Enrutamiento centralizado de microservicios
-    return {"message": "API Gateway v0.1.0 - Ready"}
+    """Punto de entrada del API Gateway."""
+    return {
+        "mensaje": "API Gateway v0.2.0 - Listo",
+        "funcion": "Enrutamiento centralizado y validacion de acceso",
+    }
+
+
+# Registrar rutas proxy bajo /api para no afectar el contrato actual del frontend.
+app.include_router(enrutador_gateway)

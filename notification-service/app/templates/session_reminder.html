@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="es">
+  <body style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
+    <h1 style="color: #7c3aed;">Recordatorio de sesion</h1>
+    <p>Hola {{ nombre_destinatario }},</p>
+    <p>Te recordamos tu sesion registrada:</p>
+    <ul>
+      <li><strong>Titulo:</strong> {{ datos.get('titulo_sesion', 'Sesion sin titulo') }}</li>
+      <li><strong>Fecha:</strong> {{ datos.get('fecha', 'Por definir') }}</li>
+      <li><strong>Hora:</strong> {{ datos.get('hora', 'Por definir') }}</li>
+      <li><strong>Lugar:</strong> {{ datos.get('lugar', 'Por definir') }}</li>
+    </ul>
+    <p>Llega con anticipacion para agilizar tu ingreso.</p>
+  </body>
+</html>

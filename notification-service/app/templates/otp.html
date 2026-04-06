@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="es">
+  <body style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
+    <h1 style="color: #0f766e;">Verificacion OTP</h1>
+    <p>Hola {{ nombre_destinatario }},</p>
+    <p>Tu codigo de verificacion para CONIITI es:</p>
+    <div style="font-size: 28px; font-weight: bold; padding: 12px 16px; border: 2px solid #0f766e; display: inline-block; letter-spacing: 4px;">
+      {{ datos.get('codigo_otp', '------') }}
+    </div>
+    <p>Este codigo expira en {{ datos.get('minutos_expiracion', 10) }} minutos.</p>
+    <p>No compartas este codigo con nadie.</p>
+  </body>
+</html>

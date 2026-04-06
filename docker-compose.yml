@@ -31,6 +31,11 @@ services:
     environment:
       - BACKEND_URL=http://backend:8000
       - LOG_LEVEL=info
+      - JWT_SECRET=super-secret-replace-this
+      - JWT_ALGORITHM=HS256
+      - BACKEND_TIMEOUT=30
+      - GATEWAY_VERSION=0.2.0
+      - RATE_LIMIT_PER_MINUTE=100
     depends_on:
       - backend
     networks:
