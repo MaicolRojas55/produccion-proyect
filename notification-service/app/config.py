@@ -18,10 +18,16 @@ class ConfiguracionNotificaciones(BaseSettings):
     contraseña_smtp: str = os.getenv("SMTP_PASSWORD", "")
     # Email de remitente (no-reply)
     email_remitente: str = os.getenv("SMTP_FROM_EMAIL", "noreply@coniiti.com")
+    # Nombre visible del remitente
+    nombre_remitente: str = os.getenv("SMTP_FROM_NAME", "CONIITI Conference")
+    # Modo de envio: simulado o smtp
+    modo_envio: str = os.getenv("NOTIFICATION_MODE", "simulado")
+    # Version expuesta por el microservicio
+    version_servicio: str = os.getenv("NOTIFICATION_VERSION", "0.2.0")
 
     class Config:
         env_file = ".env"
 
 
 # Instancia global de configuración
-configurar = ConfiguracionNotificaciones()
+configuracion = ConfiguracionNotificaciones()
