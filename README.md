@@ -1,47 +1,40 @@
-# 🏛️ Sistema CONIITI - Producción y Gestión
+# Sistema CONIITI — Producción y gestión
 
-Sistema completo de gestión para conferencias CONIITI, compuesto por backend API REST y frontend React moderno.
+Monorepo para la plataforma de conferencias CONIITI: API REST (FastAPI + MongoDB), interfaz web (React + Vite + TypeScript) y servicios auxiliares (proxy Nginx, API Gateway opcional, microservicio de notificaciones).
 
-## 📋 Descripción General
+## Descripción general
 
-Este proyecto implementa un sistema integral para la gestión de conferencias académicas, incluyendo:
+- Autenticación con registro, OTP (simulado o por email según configuración) y sesiones JWT.
+- Roles: Super Admin, Web Master y Usuario registrado.
+- Agenda de conferencias, conferencistas, calendario, inscripciones y asistencia (incluido flujo con QR en el portal de estudiantes).
+- Contenido editable en sitio (p. ej. portada y galería) según las funciones implementadas en el front.
 
-- **Autenticación completa** con verificación OTP por email
-- **Gestión de usuarios** con roles jerárquicos (Super Admin, Web Master, Usuario Registrado)
-- **Agenda de conferencias** con sesiones organizadas por días
-- **Sistema de conferencistas** con información detallada
-- **Calendario de eventos** con control de asistencia
-- **Portal de estudiantes** con agenda personal
-- **Sistema QR** para registro de asistencia
+## Arquitectura del monorepo
 
-## 🏗️ Arquitectura
+| Componente | Rol |
+|------------|-----|
+| `back-end/` | API principal FastAPI, MongoDB (Motor), JWT, rutas de dominio. |
+| `front-end/` | SPA React + Vite; cliente HTTP en `src/lib/api.ts`. |
+| `nginx.conf` + servicio `gateway` en Compose | Reverse proxy: expone `/api/...` en el puerto 8080 y reenvía al backend. |
+| `api-gateway/` | Gateway FastAPI opcional (puerto 8001): proxy bajo `/api`, validación JWT y límites de tasa; no es el camino por defecto del front en Compose (el front usa Nginx en 8080). |
+| `notification-service/` | Microservicio de emails por plantillas (`POST /notify`); modo simulado o SMTP según variables. |
+| `docker-compose.yml` | Orquesta front, Nginx, backend, MongoDB, api-gateway y notification-service. |
 
-### Backend (FastAPI + MongoDB)
+## Requisitos
 
-- **API REST** con documentación automática
-- **Base de datos** NoSQL con MongoDB
-- **Autenticación JWT** con refresh tokens
-- **Email OTP** gratuito usando Gmail SMTP
-- **Validación Pydantic** de datos
-- **CORS** configurado para frontend
+**Desarrollo local**
 
-### Frontend (React + TypeScript)
+- Python 3.11+ (recomendado; alineado con los Dockerfiles).
+- Node.js 18+ y npm (o Bun).
+- MongoDB accesible (por defecto `mongodb://localhost:27017`).
 
-- **SPA moderna** con React 18
-- **TypeScript** para type safety
-- **Tailwind CSS** + shadcn/ui para estilos
-- **Validaciones en tiempo real** de formularios
-- **API client** con manejo de errores
-- **Responsive design** para móviles y desktop
+**Solo Docker Compose**
 
-## 🚀 Inicio Rápido
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (o Docker Engine + plugin Compose) en ejecución.
 
-### Prerrequisitos
+La configuración SMTP para Gmail u otro proveedor es **opcional** mientras el OTP o el correo estén en modo simulado o de desarrollo.
 
-- **Python 3.8+** para el backend
-- **Node.js 16+** o **Bun** para el frontend
-- **MongoDB** corriendo localmente o en la nube
-- **Cuenta Gmail** para envío de emails OTP
+## Inicio rápido (desarrollo local)
 
 ### 1. Clonar el repositorio
 
@@ -50,156 +43,324 @@ git clone <url-del-repositorio>
 cd produccion-proyect
 ```
 
-### 2. Configurar Backend
+### 2. Backend
 
 ```bash
 cd back-end
-
-# Instalar dependencias
+python -m venv venv
+# Windows: venv\Scripts\activate
+# Linux/macOS: source venv/bin/activate
 pip install -r requirements.txt
-
-# Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tus credenciales reales
-
-# Inicializar base de datos
+# Editar .env si hace falta (MongoDB, JWT, SMTP)
 python init_db.py
-
-# Ejecutar servidor
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 3. Configurar Frontend
+### 3. Frontend
 
 ```bash
 cd ../front-end
-
-# Instalar dependencias
 npm install
-# o
-bun install
-
-# Ejecutar servidor de desarrollo
+cp .env.example .env
+# VITE_API_URL=http://localhost:8000
 npm run dev
-# o
-bun run dev
 ```
 
-### 4. Acceder al sistema
+### 4. URLs habituales
 
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000
-- **Documentación API**: http://localhost:8000/docs
+- Interfaz web: [http://localhost:5173](http://localhost:5173)
+- API: [http://localhost:8000](http://localhost:8000)
+- Documentación interactiva: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-## ⚙️ Configuración Detallada
+## Docker Compose
 
-### Email OTP (Gmail Gratuito)
-
-1. **Habilitar 2FA** en tu cuenta Gmail
-2. **Generar App Password**:
-   - Google Account → Security → 2-Step Verification → App passwords
-   - Seleccionar "Mail" → "Other (custom name)"
-3. **Configurar .env**:
-   ```env
-   SMTP_USERNAME=tu-email@gmail.com
-   SMTP_PASSWORD=abcd-efgh-ijkl-mnop
-   ```
-
-### Variables de Entorno Backend
-
-```env
-# Base de datos
-MONGODB_URI=mongodb://localhost:27017
-MONGODB_DB=produccion_db
-
-# JWT
-JWT_SECRET_KEY=tu-clave-secreta-muy-segura-aqui
-
-# Email
-SMTP_USERNAME=tu-email@gmail.com
-SMTP_PASSWORD=tu-app-password-16-caracteres
-```
-
-### Variables de Entorno Frontend
-
-```env
-VITE_API_BASE_URL=http://localhost:8000
-```
-
-## 🔐 Usuarios por Defecto
-
-Después de ejecutar `init_db.py`, estarán disponibles:
-
-| Email                     | Contraseña     | Rol                |
-| ------------------------- | -------------- | ------------------ |
-| superadmin@coniiti.edu.co | SuperAdmin123! | Super Admin        |
-| webmaster@coniiti.edu.co  | WebMaster123!  | Web Master         |
-| estudiante@coniiti.edu.co | Estudiante123! | Usuario Registrado |
-
-## 📱 Características Principales
-
-### Autenticación
-
-- ✅ Registro con validación completa
-- ✅ Verificación OTP por email
-- ✅ Login con JWT
-- ✅ Roles y permisos
-- ✅ Reenvío de códigos OTP
-
-### Agenda y Sesiones
-
-- ✅ Agenda organizada por días
-- ✅ Inscripción a sesiones
-- ✅ Información de conferencistas
-- ✅ Ubicaciones y horarios
-
-### Gestión de Eventos
-
-- ✅ Calendario personalizado
-- ✅ Control de asistencia
-- ✅ Sistema QR para estudiantes
-
-### Portal de Estudiantes
-
-- ✅ Agenda personal
-- ✅ Registro de asistencia
-- ✅ Historial de participación
-
-## 🧪 Testing
-
-### Backend
+Desde la raíz del monorepo:
 
 ```bash
-cd back-end
-python -m pytest
+docker compose up --build
 ```
 
-### Frontend
+Población inicial de datos (cuando el contenedor `backend` esté en marcha):
 
 ```bash
-cd front-end
-npm run test
+docker compose exec backend python init_db.py
 ```
 
-## 📚 Documentación Adicional
+**URLs útiles**
 
-- [Backend API Docs](./back-end/README.md)
-- [Frontend Guide](./front-end/README.md)
-- [API Endpoints](http://localhost:8000/docs) (cuando el backend esté corriendo)
+| Servicio | URL |
+|----------|-----|
+| Frontend | [http://localhost:5173](http://localhost:5173) |
+| API vía Nginx (prefijo `/api`) | [http://localhost:8080/api](http://localhost:8080/api) |
+| API directa (Swagger) | [http://localhost:8000/docs](http://localhost:8000/docs) |
+| API Gateway (opcional) | [http://localhost:8001](http://localhost:8001) |
+| Notificaciones | [http://localhost:8002/health](http://localhost:8002/health) |
 
-## 🤝 Contribución
+El front en Compose usa `VITE_API_URL=http://localhost:8080/api` para que las rutas (`/auth/...`, etc.) coincidan con el `location /api/` de Nginx. Vite incorpora las variables `VITE_*` al arrancar el servidor de desarrollo: si cambias el entorno, reconstruye o reinicia el servicio `frontend`.
 
-1. Fork el proyecto
-2. Crear rama para feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit cambios (`git commit -m 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Abrir Pull Request
+## Variables de entorno (referencia)
 
-## 📄 Licencia
+**Backend** (`back-end/.env` — ver `back-end/.env.example`)
 
-Este proyecto está bajo la Licencia MIT.
+- `MONGODB_URI` / `MONGODB_URL` — conexión a MongoDB.
+- `MONGODB_DB` — nombre de la base de datos.
+- `JWT_SECRET_KEY` / `JWT_SECRET` — secreto compartido con el API Gateway si lo usas.
+
+**Frontend** (`front-end/.env`)
+
+- `VITE_API_URL` — base de la API: `http://localhost:8000` en local; `http://localhost:8080/api` con Docker Compose y Nginx.
+
+**API Gateway** y **notification-service**: ejemplos en `api-gateway/.env.example` y `notification-service/.env.example`.
+
+## Usuarios por defecto (`init_db.py`)
+
+Tras ejecutar `python init_db.py` contra la misma base configurada en el backend:
+
+| Email | Contraseña | Rol |
+|-------|------------|-----|
+| super_admin@example.com | SuperAdmin123! | Super Admin |
+| web_master@example.com | WebMaster123! | Web Master |
+| user@example.com | Usuario123! | Usuario registrado |
+
+## CI y pruebas
+
+- **GitHub Actions** (`.github/workflows/ci.yml`): ESLint, tests Vitest y build del front; comprobación ligera del backend (`compileall`).
+- **Frontend:** `cd front-end && npm run test`
+- En el backend no hay suite de pytest versionada; las pruebas automatizadas del API pueden añadirse en `back-end/` cuando se defina la estrategia.
+
+## Estructura del proyecto
+
+Árbol de **archivos y carpetas rastreados por Git** (no incluye `node_modules/`, `venv/`, `dist/`, artefactos de build ni `__pycache__/`). Para listar el estado actual en consola: `git ls-files`.
+
+```
+produccion-proyect/
+├── .github
+│   └── workflows
+│       └── ci.yml
+├── api-gateway
+│   ├── app
+│   │   ├── __init__.py
+│   │   ├── auth.py
+│   │   ├── client.py
+│   │   ├── config.py
+│   │   ├── main.py
+│   │   ├── middleware.py
+│   │   └── routes.py
+│   ├── .env.example
+│   ├── Dockerfile
+│   └── requirements.txt
+├── back-end
+│   ├── app
+│   │   ├── routes
+│   │   │   ├── __init__.py
+│   │   │   ├── agenda_inscriptions.py
+│   │   │   ├── attendance.py
+│   │   │   ├── auth.py
+│   │   │   ├── calendar.py
+│   │   │   ├── conferences.py
+│   │   │   ├── sessions.py
+│   │   │   ├── speakers.py
+│   │   │   ├── stats.py
+│   │   │   ├── student_agenda.py
+│   │   │   └── users.py
+│   │   ├── __init__.py
+│   │   ├── auth.py
+│   │   ├── config.py
+│   │   ├── db.py
+│   │   ├── email_service.py
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   └── mongo_utils.py
+│   ├── .gitignore
+│   ├── Dockerfile
+│   ├── README.md
+│   ├── init_db.py
+│   ├── pyproject.toml
+│   └── requirements.txt
+├── front-end
+│   ├── public
+│   │   ├── favicon.ico
+│   │   ├── placeholder.svg
+│   │   └── robots.txt
+│   ├── src
+│   │   ├── assets
+│   │   │   └── hero-agenda.jpg
+│   │   ├── components
+│   │   │   ├── layout
+│   │   │   │   ├── AppNavbar.tsx
+│   │   │   │   └── NavLink.tsx
+│   │   │   ├── shared
+│   │   │   │   ├── AgendaHero.tsx
+│   │   │   │   ├── BotonRegistro.test.tsx
+│   │   │   │   ├── BotonRegistro.tsx
+│   │   │   │   ├── DayTabContent.tsx
+│   │   │   │   ├── SessionCard.tsx
+│   │   │   │   └── TechBackground.tsx
+│   │   │   └── ui
+│   │   │       ├── accordion.tsx
+│   │   │       ├── alert-dialog.tsx
+│   │   │       ├── alert.tsx
+│   │   │       ├── aspect-ratio.tsx
+│   │   │       ├── avatar.tsx
+│   │   │       ├── badge.tsx
+│   │   │       ├── breadcrumb.tsx
+│   │   │       ├── button.tsx
+│   │   │       ├── calendar.tsx
+│   │   │       ├── card.tsx
+│   │   │       ├── carousel.tsx
+│   │   │       ├── chart.tsx
+│   │   │       ├── checkbox.tsx
+│   │   │       ├── collapsible.tsx
+│   │   │       ├── command.tsx
+│   │   │       ├── context-menu.tsx
+│   │   │       ├── dialog.tsx
+│   │   │       ├── drawer.tsx
+│   │   │       ├── dropdown-menu.tsx
+│   │   │       ├── form.tsx
+│   │   │       ├── hover-card.tsx
+│   │   │       ├── input-otp.tsx
+│   │   │       ├── input.tsx
+│   │   │       ├── label.tsx
+│   │   │       ├── menubar.tsx
+│   │   │       ├── navigation-menu.tsx
+│   │   │       ├── pagination.tsx
+│   │   │       ├── popover.tsx
+│   │   │       ├── progress.tsx
+│   │   │       ├── radio-group.tsx
+│   │   │       ├── resizable.tsx
+│   │   │       ├── scroll-area.tsx
+│   │   │       ├── select.tsx
+│   │   │       ├── separator.tsx
+│   │   │       ├── sheet.tsx
+│   │   │       ├── sidebar.tsx
+│   │   │       ├── skeleton.tsx
+│   │   │       ├── slider.tsx
+│   │   │       ├── sonner.tsx
+│   │   │       ├── switch.tsx
+│   │   │       ├── table.tsx
+│   │   │       ├── tabs.tsx
+│   │   │       ├── textarea.tsx
+│   │   │       ├── toast.tsx
+│   │   │       ├── toaster.tsx
+│   │   │       ├── toggle-group.tsx
+│   │   │       ├── toggle.tsx
+│   │   │       ├── tooltip.tsx
+│   │   │       ├── use-toast.ts
+│   │   │       └── validated-input.tsx
+│   │   ├── data
+│   │   │   └── agendaData.ts
+│   │   ├── features
+│   │   │   ├── agenda
+│   │   │   │   └── storage.ts
+│   │   │   ├── auth
+│   │   │   │   ├── AuthContext.tsx
+│   │   │   │   ├── ProtectedRoute.tsx
+│   │   │   │   ├── RequireAuth.tsx
+│   │   │   │   ├── storage.ts
+│   │   │   │   ├── types.ts
+│   │   │   │   ├── useAuth.ts
+│   │   │   │   └── useRBAC.ts
+│   │   │   ├── calendar
+│   │   │   │   ├── storage.ts
+│   │   │   │   └── types.ts
+│   │   │   ├── conference
+│   │   │   │   ├── storage.ts
+│   │   │   │   └── types.ts
+│   │   │   ├── content
+│   │   │   │   ├── EditModals.tsx
+│   │   │   │   └── storage.ts
+│   │   │   ├── device
+│   │   │   │   └── device.ts
+│   │   │   ├── otp
+│   │   │   │   ├── otp.ts
+│   │   │   │   ├── storage.ts
+│   │   │   │   └── types.ts
+│   │   │   └── student-qr
+│   │   │       └── studentQr.ts
+│   │   ├── hooks
+│   │   │   ├── use-countdown.ts
+│   │   │   ├── use-mobile.tsx
+│   │   │   ├── use-toast.ts
+│   │   │   └── useFormValidation.ts
+│   │   ├── lib
+│   │   │   ├── api.ts
+│   │   │   └── utils.ts
+│   │   ├── pages
+│   │   │   ├── Agenda.tsx
+│   │   │   ├── AppGate.tsx
+│   │   │   ├── Auth.tsx
+│   │   │   ├── CalendarPage.tsx
+│   │   │   ├── Conferencistas.tsx
+│   │   │   ├── Index.tsx
+│   │   │   ├── NotFound.tsx
+│   │   │   ├── StudentPortal.tsx
+│   │   │   ├── SuperAdminDashboard.tsx
+│   │   │   └── WebMasterDashboard.tsx
+│   │   ├── test
+│   │   │   ├── example.test.ts
+│   │   │   └── setup.ts
+│   │   ├── App.css
+│   │   ├── App.tsx
+│   │   ├── ErrorBoundary.tsx
+│   │   ├── index.css
+│   │   ├── main.tsx
+│   │   └── vite-env.d.ts
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── Dockerfile
+│   ├── README.md
+│   ├── bun.lockb
+│   ├── components.json
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.ts
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── vite.config.ts
+│   └── vitest.config.ts
+├── notification-service
+│   ├── app
+│   │   ├── templates
+│   │   │   ├── otp.html
+│   │   │   ├── session_reminder.html
+│   │   │   └── welcome.html
+│   │   ├── __init__.py
+│   │   ├── config.py
+│   │   ├── email.py
+│   │   ├── main.py
+│   │   └── models.py
+│   ├── .env.example
+│   ├── Dockerfile
+│   └── requirements.txt
+├── .gitignore
+├── INTEGRATION_GUIDE.md
+├── README.md
+├── docker-compose.yml
+└── nginx.conf
+```
+
+## Documentación adicional
+
+- [Backend — detalle de API y modelos](./back-end/README.md)
+- [Frontend](./front-end/README.md)
+- [Guía de integración](./INTEGRATION_GUIDE.md) (si aplica a tu flujo de despliegue)
+
+## Contribución
+
+1. Fork del repositorio.
+2. Rama de trabajo: `git checkout -b feature/nombre-descriptivo`.
+3. Commits con mensajes claros.
+4. Push y apertura de un Pull Request hacia la rama acordada por el equipo.
+
+## Licencia
+
+Este proyecto se distribuye bajo la licencia MIT.
 
 ---
 
-**Desarrollado para la Universidad CONIITI** 🎓</content>
-<parameter name="filePath">c:\Users\rojas\Documents\Maicol Rojas\produccion-software\test\produccion-proyect\README.md
+Desarrollado en el marco del proyecto CONIITI.
