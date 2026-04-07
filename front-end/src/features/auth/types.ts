@@ -7,14 +7,16 @@ export type Role = 'super_admin' | 'web_master' | 'usuario_registrado'
 
 export interface User {
   id: string
-  nombre: string
+  // Backend usa full_name; nombre se mantiene por compatibilidad local.
+  full_name?: string
+  nombre?: string
   email: string
-  password: string
   role: Role
   telefono?: string
   activated?: boolean
   primaryDeviceId?: string
-  createdAt: string
+  password?: string
+  createdAt?: string
   meta?: Record<string, string>
 }
 
