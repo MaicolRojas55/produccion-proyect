@@ -7,7 +7,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8080
+      # Debe incluir /api: Nginx en gateway solo enruta ese prefijo al backend.
+      - VITE_API_URL=http://localhost:8080/api
     depends_on:
       - gateway
     networks:
@@ -31,6 +32,7 @@ services:
     environment:
       - BACKEND_URL=http://backend:8000
       - LOG_LEVEL=info
+      # Mismo secreto que JWT_SECRET_KEY del backend para validar tokens emitidos por la API.
       - JWT_SECRET=super-secret-replace-this
       - JWT_ALGORITHM=HS256
       - BACKEND_TIMEOUT=30
@@ -46,7 +48,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - MONGODB_URL=mongodb://mongo:27017/coniiti
+      - MONGODB_URI=mongodb://mongo:27017
+      - MONGODB_DB=produccion_db
+      - JWT_SECRET_KEY=super-secret-replace-this
     depends_on:
       - mongo
     networks:
