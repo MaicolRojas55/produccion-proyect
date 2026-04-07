@@ -9,6 +9,7 @@ from ..config import settings
 from ..db import users_collection, otps_collection
 from ..models import OTP, Token, UserCreate, User, UserLogin
 from ..email_service import email_service
+from ..servicio_notificaciones import cliente_notificaciones
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,17 +47,25 @@ async def register(user_data: UserCreate):
     }
     result = await otps_collection.insert_one(otp_doc)
 
-    # Mostrar código OTP en terminal (TEMPORALMENTE SIMULADO)
-    # En fase final, esto será manejado por microservicio de OTP
-    otp_displayed = await email_service.send_otp_email(
-        to_email=user_data.email,
-        otp_code=code,
-        user_name=user_data.full_name
+    # Enviar OTP a través del microservicio de notificaciones
+    otp_enviado = await cliente_notificaciones.enviar_otp(
+        email_destino=user_data.email,
+        nombre_usuario=user_data.full_name,
+        codigo_otp=code,
+        minutos_expiracion=settings.otp_expire_minutes,
     )
 
+    # Si falla el microservicio, intentar con email_service simulado como fallback
+    if not otp_enviado:
+        otp_enviado = await email_service.send_otp_email(
+            to_email=user_data.email,
+            otp_code=code,
+            user_name=user_data.full_name
+        )
+
     return {
-        "message": "Usuario registrado. El código de verificación aparecerá en la terminal del backend.",
-        "email_sent": otp_displayed,
+        "message": "Usuario registrado. Verifica tu código OTP.",
+        "email_sent": otp_enviado,
         "otp_id": str(result.inserted_id)
     }
 
@@ -73,13 +82,20 @@ async def verify_otp(email: EmailStr, code: str):
     await otps_collection.update_one({"_id": otp_doc["_id"]}, {"$set": {"verified": True}})
     await users_collection.update_one({"email": email}, {"$set": {"is_verified": True}})
 
-    # Mostrar mensaje de bienvenida en terminal (TEMPORALMENTE SIMULADO)
+    # Enviar email de bienvenida a través del microservicio de notificaciones
     user_doc = await users_collection.find_one({"email": email})
     if user_doc:
-        await email_service.send_welcome_email(
-            to_email=email,
-            user_name=user_doc.get("full_name", "Usuario")
+        bienvenida_enviada = await cliente_notificaciones.enviar_bienvenida(
+            email_destino=email,
+            nombre_usuario=user_doc.get("full_name", "Usuario")
         )
+
+        # Si falla el microservicio, usar fallback del email_service
+        if not bienvenida_enviada:
+            await email_service.send_welcome_email(
+                to_email=email,
+                user_name=user_doc.get("full_name", "Usuario")
+            )
 
     return {"message": "OTP verificado exitosamente. ¡Bienvenido a CONIITI!"}
 
@@ -111,17 +127,25 @@ async def resend_otp(email: EmailStr):
     # Insertar nuevo OTP
     result = await otps_collection.insert_one(otp_doc)
 
-    # Mostrar código OTP en terminal (TEMPORALMENTE SIMULADO)
-    # En fase final, esto será manejado por microservicio de OTP
-    otp_displayed = await email_service.send_otp_email(
-        to_email=email,
-        otp_code=code,
-        user_name=user_doc.get("full_name", "Usuario")
+    # Enviar OTP a través del microservicio de notificaciones
+    otp_enviado = await cliente_notificaciones.enviar_otp(
+        email_destino=email,
+        nombre_usuario=user_doc.get("full_name", "Usuario"),
+        codigo_otp=code,
+        minutos_expiracion=settings.otp_expire_minutes,
     )
 
+    # Si falla, usar fallback
+    if not otp_enviado:
+        otp_enviado = await email_service.send_otp_email(
+            to_email=email,
+            otp_code=code,
+            user_name=user_doc.get("full_name", "Usuario")
+        )
+
     return {
-        "message": "Nuevo código OTP generado. Aparecerá en la terminal del backend.",
-        "email_sent": otp_displayed,
+        "message": "Nuevo código OTP generado.",
+        "email_sent": otp_enviado,
         "otp_id": str(result.inserted_id)
     }
 

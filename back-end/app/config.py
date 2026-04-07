@@ -29,5 +29,13 @@ class Settings(BaseSettings):
     smtp_from_email: str = ""
     smtp_from_name: str = "CONIITI Conference"
 
+    # Configuración del microservicio de notificaciones
+    url_servicio_notificaciones: str = Field(
+        default="http://localhost:8002",
+        validation_alias=AliasChoices("NOTIFICATION_SERVICE_URL", "SERVICIO_NOTIFICACIONES_URL"),
+    )
+    tiempo_espera_notificaciones: float = Field(default=10.0)
+    habilitar_notificaciones: bool = Field(default=True)
+
 
 settings = Settings()
