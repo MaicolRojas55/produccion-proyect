@@ -16,6 +16,7 @@ import {
   Clock,
   Globe,
   LogOut,
+  Plus,
   QrCode,
   ShieldCheck,
   Calendar,
@@ -165,7 +166,7 @@ export default function StudentPortal() {
               <div className="leading-tight">
                 <div className="font-heading font-black">Mi espacio</div>
                 <div className="text-xs text-muted-foreground">
-                  {user.full_name || user.email}
+                  {user.full_name || user.nombre || user.email}
                 </div>
               </div>
             </div>
