@@ -25,6 +25,14 @@ class ConfiguracionNotificaciones(BaseSettings):
     # Version expuesta por el microservicio
     version_servicio: str = os.getenv("NOTIFICATION_VERSION", "0.2.0")
 
+    # RabbitMQ (event-driven)
+    rabbitmq_url: str = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
+    events_exchange: str = os.getenv("EVENTS_EXCHANGE", "coniiti.events")
+    events_queue: str = os.getenv("EVENTS_QUEUE", "notifications.q")
+
+    # DB propia del servicio (SQLite en volumen)
+    sqlite_path: str = os.getenv("SQLITE_PATH", "/data/notifications.sqlite")
+
     class Config:
         env_file = ".env"
 
