@@ -1,6 +1,6 @@
 # Sistema CONIITI — Producción y gestión
 
-Monorepo para la plataforma de conferencias CONIITI: API REST (FastAPI + MongoDB), interfaz web (React + Vite + TypeScript) y servicios auxiliares (proxy Nginx, API Gateway opcional, microservicio de notificaciones).
+Monorepo para la plataforma de conferencias CONIITI: frontend React, gateway Nginx, microservicios FastAPI y comunicación asíncrona por eventos con RabbitMQ.
 
 ## Descripción general
 
@@ -15,10 +15,12 @@ Monorepo para la plataforma de conferencias CONIITI: API REST (FastAPI + MongoDB
 |------------|-----|
 | `back-end/` | API principal FastAPI, MongoDB (Motor), JWT, rutas de dominio. |
 | `front-end/` | SPA React + Vite; cliente HTTP en `src/lib/api.ts`. |
-| `nginx.conf` + servicio `gateway` en Compose | Reverse proxy: expone `/api/...` en el puerto 8080 y reenvía al backend. |
-| `api-gateway/` | Gateway FastAPI opcional (puerto 8001): proxy bajo `/api`, validación JWT y límites de tasa; no es el camino por defecto del front en Compose (el front usa Nginx en 8080). |
-| `notification-service/` | Microservicio de emails por plantillas (`POST /notify`); modo simulado o SMTP según variables. |
-| `docker-compose.yml` | Orquesta front, Nginx, backend, MongoDB, api-gateway y notification-service. |
+| `nginx.conf` + servicio `gateway` en Compose | Punto único de entrada (`http://localhost:8080/api`) y ruteo por dominio a servicios internos. |
+| `users-service/` | Microservicio de usuarios/autenticación. Base propia MongoDB y publicación de eventos (`user.registered`). |
+| `conferences-service/` | Microservicio de conferencias/agenda de estudiante. Base propia MongoDB y eventos (`conference.created`). |
+| `notification-service/` | Consume eventos de RabbitMQ en segundo plano y registra eventos procesados en su DB propia (SQLite). |
+| `back-end/` | Servicio legacy para rutas aún no migradas (fallback del gateway). |
+| `docker-compose.yml` | Orquesta frontend + gateway + microservicios + RabbitMQ + bases separadas por servicio. |
 
 ## Requisitos
 
@@ -73,7 +75,7 @@ npm run dev
 - API: [http://localhost:8000](http://localhost:8000)
 - Documentación interactiva: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-## Docker Compose
+## Docker Compose (arquitectura requerida)
 
 Desde la raíz del monorepo:
 
@@ -92,12 +94,82 @@ docker compose exec backend python init_db.py
 | Servicio | URL |
 |----------|-----|
 | Frontend | [http://localhost:5173](http://localhost:5173) |
-| API vía Nginx (prefijo `/api`) | [http://localhost:8080/api](http://localhost:8080/api) |
-| API directa (Swagger) | [http://localhost:8000/docs](http://localhost:8000/docs) |
-| API Gateway (opcional) | [http://localhost:8001](http://localhost:8001) |
+| API única vía Gateway Nginx | [http://localhost:8080/api](http://localhost:8080/api) |
+| RabbitMQ UI | [http://localhost:15672](http://localhost:15672) (`guest/guest`) |
+| Backend legacy (fallback) | [http://localhost:8000/docs](http://localhost:8000/docs) |
 | Notificaciones | [http://localhost:8002/health](http://localhost:8002/health) |
 
-El front en Compose usa `VITE_API_URL=http://localhost:8080/api` para que las rutas (`/auth/...`, etc.) coincidan con el `location /api/` de Nginx. Vite incorpora las variables `VITE_*` al arrancar el servidor de desarrollo: si cambias el entorno, reconstruye o reinicia el servicio `frontend`.
+El front en Compose usa `VITE_API_URL=http://localhost:8080/api` para consumir el gateway como punto único.
+
+### Ruteo en el gateway
+
+- `/api/auth/*` y `/api/users/*` -> `users-service`
+- `/api/conferences/*` y `/api/student-agenda/*` -> `conferences-service`
+- `/api/notifications/*` -> `notification-service`
+- `/api/*` restante -> `back-end` (fallback temporal para rutas no migradas)
+
+### Mensajería asíncrona y resiliencia
+
+- Broker: RabbitMQ (`coniiti.events`, exchange topic durable).
+- Productores:
+  - `users-service` publica `user.registered`.
+  - `conferences-service` publica `conference.created`.
+- Consumidor:
+  - `notification-service` consume `user.*` y `conference.*` desde cola durable `notifications.q`.
+  - Cada evento procesado se guarda en SQLite (`/data/notifications.sqlite`), base propia del servicio.
+
+## Pruebas end-to-end y de resiliencia
+
+### Flujo base
+
+1. Levantar stack:
+
+```bash
+docker compose up --build
+```
+
+2. Verificar salud:
+
+```bash
+curl http://localhost:8080/api/auth/me
+curl http://localhost:8002/health
+curl http://localhost:8002/metrics
+```
+
+3. Registrar usuario (publica evento `user.registered`):
+
+```bash
+curl -X POST "http://localhost:8080/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d "{\"full_name\":\"Test User\",\"email\":\"testuser@example.com\",\"password\":\"Test12345!\",\"role\":\"usuario_registrado\"}"
+```
+
+4. Crear conferencia con token staff (publica `conference.created`).
+
+### Prueba de resiliencia (video de 1 minuto)
+
+1. Apagar notificaciones:
+
+```bash
+docker compose stop notification-service
+```
+
+2. Desde el front, crear una ponencia/conferencia (la app debe seguir funcionando).
+
+3. Encender notificaciones:
+
+```bash
+docker compose start notification-service
+```
+
+4. Validar que consume pendientes:
+
+```bash
+curl http://localhost:8002/metrics
+docker compose logs notification-service
+```
+
+Si `processed_events_total` crece y los logs muestran `evento_consumido`, la resiliencia asíncrona está comprobada.
 
 ## Variables de entorno (referencia)
 
