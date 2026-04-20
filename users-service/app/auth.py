@@ -36,10 +36,17 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     return encoded_jwt
 
 
+def serialize_user_doc(user_doc: dict) -> dict:
+    """Convierte ObjectId a string para que Pydantic v2 pueda procesarlo."""
+    if user_doc and "_id" in user_doc:
+        user_doc["_id"] = str(user_doc["_id"])
+    return user_doc
+
+
 async def get_user_by_email(email: str) -> User | None:
     user_doc = await users_collection.find_one({"email": email})
     if user_doc:
-        return User(**user_doc)
+        return User(**serialize_user_doc(user_doc))
     return None
 
 
@@ -70,7 +77,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
         )
     except JWTError:
         raise credentials_exception
-    user = await get_user_by_email(token_data.email)  # type: ignore[arg-type]
+
+    user = await get_user_by_email(token_data.email)
     if user is None:
         raise credentials_exception
     return user
@@ -82,4 +90,3 @@ async def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
-
