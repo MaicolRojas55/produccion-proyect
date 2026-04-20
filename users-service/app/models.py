@@ -1,15 +1,14 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 RoleType = Literal["super_admin", "web_master", "usuario_registrado"]
 
 
 class MongoBaseModel(BaseModel):
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class User(MongoBaseModel):
@@ -23,7 +22,7 @@ class User(MongoBaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-class UserPublic(BaseModel):
+class UserPublic(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     full_name: str
     email: EmailStr
@@ -72,4 +71,3 @@ class UserRegisteredEvent(BaseModel):
     email: EmailStr
     full_name: str
     role: RoleType
-
