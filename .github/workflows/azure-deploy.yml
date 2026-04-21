@@ -1,4 +1,4 @@
-name: Deploy to Azure Web App
+name: Deploy Frontend to Azure
 
 on:
   push:
@@ -13,8 +13,22 @@ jobs:
       - name: Checkout codigo
         uses: actions/checkout@v3
 
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        working-directory: ./front-end
+        run: npm install
+
+      - name: Build del frontend
+        working-directory: ./front-end
+        run: npm run build
+
       - name: Deploy a Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'produccion-proyect'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./front-end/dist
