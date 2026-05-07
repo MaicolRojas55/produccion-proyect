@@ -1,5 +1,7 @@
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_INSECURE_DEFAULTS = {"super-secret-replace-this", "secret", "changeme", ""}
 
 
 class Settings(BaseSettings):
@@ -26,6 +28,17 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("RABBITMQ_URL"),
     )
     events_exchange: str = Field(default="coniiti.events", validation_alias=AliasChoices("EVENTS_EXCHANGE"))
+
+    @model_validator(mode="after")
+    def check_secrets(self) -> "Settings":
+        if self.jwt_secret_key in _INSECURE_DEFAULTS or len(self.jwt_secret_key) < 32:
+            import warnings
+            warnings.warn(
+                "JWT_SECRET_KEY es inseguro o demasiado corto (min 32 chars). "
+                "Genera uno con: python -c \"import secrets; print(secrets.token_hex(64))\"",
+                stacklevel=2,
+            )
+        return self
 
 
 settings = Settings()
