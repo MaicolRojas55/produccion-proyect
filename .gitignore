@@ -5,6 +5,12 @@
 /.idea
 *.log
 
+# Secretos de producción (NUNCA subir al repositorio)
+/.env
+/notification-service/.env
+/users-service/.env
+/conferences-service/.env
+
 # Front-end
 /front-end/node_modules
 /front-end/dist
