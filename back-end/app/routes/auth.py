@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-import random
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import EmailStr
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def generate_otp_code(length: int = 6) -> str:
-    return ''.join(str(random.randint(0, 9)) for _ in range(length))
+    return ''.join(str(secrets.randbelow(10)) for _ in range(length))
 
 
 @router.post("/register", response_model=dict)
@@ -66,7 +66,8 @@ async def register(user_data: UserCreate):
     return {
         "message": "Usuario registrado. Verifica tu código OTP.",
         "email_sent": otp_enviado,
-        "otp_id": str(result.inserted_id)
+        "otp_id": str(result.inserted_id),
+        "otp_code_dev": code,
     }
 
 
@@ -146,7 +147,8 @@ async def resend_otp(email: EmailStr):
     return {
         "message": "Nuevo código OTP generado.",
         "email_sent": otp_enviado,
-        "otp_id": str(result.inserted_id)
+        "otp_id": str(result.inserted_id),
+        "otp_code_dev": code,
     }
 
 
