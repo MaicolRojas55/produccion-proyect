@@ -1,12 +1,3 @@
-"""
-Problemas corregidos:
-1. El query de deduplicación usaba session_id como string, pero as_object_id()
-   lo convierte a ObjectId → nunca coincidía y permitía inscripciones duplicadas.
-2. Al guardar la inscripción, session_id se guardaba como string, luego al buscar
-   se convertía a ObjectId → el campo nunca hacía match.
-3. Se normalizaron todos los IDs a ObjectId para consistencia con MongoDB.
-"""
-
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
@@ -33,6 +24,7 @@ async def get_my_inscriptions(current_user: User = Depends(get_current_active_us
     if not session_ids:
         return []
 
+    # Obtener las sesiones
     sessions_cursor = sessions_collection.find({"_id": {"$in": session_ids}})
     sessions = []
     async for session in sessions_cursor:
@@ -42,20 +34,15 @@ async def get_my_inscriptions(current_user: User = Depends(get_current_active_us
 
 
 @router.post("/{session_id}")
-async def inscribe_to_session(
-    session_id: str, current_user: User = Depends(get_current_active_user)
-):
-    """Inscribirse a una sesión de la agenda."""
+async def inscribe_to_session(session_id: str, current_user: User = Depends(get_current_active_user)):
+    """Inscribirse a una sesión de la agenda"""
     # Convertir a ObjectId una sola vez y reutilizar
     session_oid = as_object_id(session_id)
 
     # Verificar que la sesión existe
     session = await sessions_collection.find_one({"_id": session_oid})
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Sesión no encontrada"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sesión no encontrada")
 
     # FIX: usar ObjectId en el query de deduplicación, igual que al guardar
     existing = await agenda_inscriptions_collection.find_one({
@@ -90,10 +77,8 @@ async def inscribe_to_session(
 
 
 @router.delete("/{session_id}")
-async def uninscribe_from_session(
-    session_id: str, current_user: User = Depends(get_current_active_user)
-):
-    """Cancelar inscripción a una sesión."""
+async def uninscribe_from_session(session_id: str, current_user: User = Depends(get_current_active_user)):
+    """Cancelar inscripción a una sesión"""
     session_oid = as_object_id(session_id)
 
     result = await agenda_inscriptions_collection.delete_one({
@@ -112,7 +97,7 @@ async def uninscribe_from_session(
 
 @router.get("/session/{session_id}/count")
 async def get_session_inscription_count(session_id: str):
-    """Obtener el número de inscripciones para una sesión."""
+    """Obtener el número de inscripciones para una sesión"""
     session_oid = as_object_id(session_id)
     count = await agenda_inscriptions_collection.count_documents(
         {"session_id": session_oid}

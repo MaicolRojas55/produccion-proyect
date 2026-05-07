@@ -1,14 +1,3 @@
-"""
-Problema original:
-- modo_envio == "simulado" siempre → nunca se enviaba el email real
-- El bloque SMTP estaba vacío (solo retornaba enviada=False con un mensaje de "aún no implementado")
-
-Solución:
-- Se implementa el envío SMTP real cuando modo_envio == "smtp"
-- Cuando modo_envio == "simulado" sigue imprimiendo en terminal (útil en desarrollo)
-- Las plantillas HTML existentes (otp.html, welcome.html, etc.) se reutilizan sin cambios
-"""
-
 import smtplib
 import sys
 from email.mime.multipart import MIMEMultipart
@@ -111,7 +100,7 @@ class ServicioNotificaciones:
             return False
 
     async def enviar_notificacion(self, solicitud: SolicitudNotificacion) -> RespuestaNotificacion:
-        """Renderiza la notificación y la envía según el modo configurado."""
+        """Renderiza la notificacion y la envia segun el modo configurado."""
         asunto, html = self._renderizar_html(solicitud)
 
         # ── MODO SIMULADO (desarrollo local) ──────────────────────────────
