@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import json
+from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,21 +17,60 @@ import aio_pika
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Inicializar aplicación FastAPI del servicio de notificaciones
-app = FastAPI(
-    title="Servicio de Notificaciones",
-    version="0.2.0",
-    description="Microservicio dedicado para gestionar notificaciones por email"
-)
 
-# Configuración CORS abierta (el gateway valida autenticación)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Gateway maneja restricciones de origen
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+async def _procesar_evento(event_type: str, payload: dict) -> None:
+    """
+    Despacha el evento al servicio de notificaciones según su tipo.
+    FIX: antes el consumer solo guardaba en SQLite sin enviar ningún email.
+    """
+    try:
+        # ── user.registered → enviar OTP de activación ────────────────────
+        if event_type == "user.registered":
+            solicitud = SolicitudNotificacion(
+                tipo="otp",
+                email_destino=payload.get("email", ""),
+                nombre_destinatario=payload.get("full_name"),
+                datos={
+                    "otp_code": payload.get("otp_code", ""),
+                    "expire_minutes": 10,
+                },
+            )
+            resultado = await servicio_notificaciones.enviar_notificacion(solicitud)
+            logger.info(
+                "otp_enviado email=%s enviada=%s modo=%s",
+                payload.get("email"),
+                resultado.enviada,
+                resultado.modo_envio,
+            )
+
+        # ── user.otp_resent → reenviar OTP ────────────────────────────────
+        elif event_type == "user.otp_resent":
+            solicitud = SolicitudNotificacion(
+                tipo="otp",
+                email_destino=payload.get("email", ""),
+                nombre_destinatario=payload.get("full_name"),
+                datos={
+                    "otp_code": payload.get("otp_code", ""),
+                    "expire_minutes": 10,
+                },
+            )
+            resultado = await servicio_notificaciones.enviar_notificacion(solicitud)
+            logger.info(
+                "otp_reenviado email=%s enviada=%s",
+                payload.get("email"),
+                resultado.enviada,
+            )
+
+        # ── conference.created → recordatorio (opcional, para el futuro) ──
+        elif event_type == "conference.created":
+            logger.info("conference.created recibido — sin acción de notificación configurada aún")
+
+        else:
+            logger.info("evento_sin_handler tipo=%s", event_type)
+
+    except Exception as e:
+        logger.error("error_procesando_evento tipo=%s error=%s", event_type, str(e))
+
 
 # --- Consumo asíncrono de eventos desde RabbitMQ ---
 
@@ -71,16 +111,43 @@ async def _consume_events_forever() -> None:
                 processed_at=datetime.utcnow().isoformat(),
               )
 
+              # FIX: ahora sí despacha al servicio de notificaciones
+              await _procesar_evento(event_type, payload)
+
               logger.info("evento_consumido tipo=%s", event_type)
     except Exception as e:
       logger.warning("consumer_reconnect motivo=%s", str(e))
       await asyncio.sleep(2)
 
 
-@app.on_event("startup")
-async def _startup() -> None:
-  await init_db()
-  asyncio.create_task(_consume_events_forever())
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    task = asyncio.create_task(_consume_events_forever())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+# Inicializar aplicación FastAPI del servicio de notificaciones
+app = FastAPI(
+    title="Servicio de Notificaciones",
+    version="0.2.0",
+    description="Microservicio dedicado para gestionar notificaciones por email",
+    lifespan=lifespan,
+)
+
+# Configuración CORS abierta (el gateway valida autenticación)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Gateway maneja restricciones de origen
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Endpoint de verificación del estado del servicio
