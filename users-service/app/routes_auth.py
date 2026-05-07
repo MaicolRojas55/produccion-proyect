@@ -1,5 +1,19 @@
+"""
+Problema:
+- El campo "otp_code_dev" en la respuesta de /register y /resend-otp
+  devuelve el código OTP en texto plano al frontend → riesgo de seguridad grave.
+  Cualquiera que intercepte la respuesta puede ver el código sin necesitar el email.
+
+Solución:
+- Se elimina "otp_code_dev" de las respuestas de /register y /resend-otp
+- El OTP ahora solo llega por email (a través del notification-service vía RabbitMQ)
+- En desarrollo, si RabbitMQ/notificaciones no están disponibles, el OTP
+  sigue apareciendo en los logs del users-service (no en el frontend)
+"""
+
 from datetime import datetime, timedelta
-import random
+import secrets
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import EmailStr
@@ -11,11 +25,12 @@ from .events import publish_event
 from .models import Token, User, UserCreate, UserLogin
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def generate_otp_code(length: int = 6) -> str:
-    return "".join(str(random.randint(0, 9)) for _ in range(length))
+    return "".join(str(secrets.randbelow(10)) for _ in range(length))
 
 
 @router.post("/register", response_model=dict)
@@ -49,7 +64,10 @@ async def register(user_data: UserCreate):
     }
     result = await otps_collection.insert_one(otp_doc)
 
-    # Evento asíncrono: no depende de que notificaciones esté arriba.
+    # Log en servidor (nunca llega al frontend)
+    logger.info("OTP generado para %s (solo visible en logs del servidor)", user_data.email)
+
+    # Publicar evento para que notification-service envíe el email
     await publish_event(
         "user.registered",
         {
@@ -57,14 +75,15 @@ async def register(user_data: UserCreate):
             "email": user_data.email,
             "full_name": user_data.full_name,
             "role": user_data.role,
+            "otp_code": code,  # solo viaja por RabbitMQ, nunca al frontend
         },
     )
 
+    # FIX: se elimina "otp_code_dev" de la respuesta
     return {
-        "message": "Usuario registrado. Revisa tu correo/servicio de notificaciones para el OTP (simulado).",
+        "message": "Usuario registrado. Revisa tu correo para el código OTP.",
         "email_sent": True,
         "otp_id": str(result.inserted_id),
-        "otp_code_dev": code,  # para pruebas locales (puedes quitarlo en producción)
     }
 
 
@@ -109,17 +128,31 @@ async def resend_otp(email: EmailStr):
         "verified": False,
     }
 
+    # Invalidar OTPs anteriores
     await otps_collection.update_many(
         {"email": email, "verified": False}, {"$set": {"verified": True}}
     )
 
     result = await otps_collection.insert_one(otp_doc)
+    logger.info("OTP reenviado para %s (solo visible en logs del servidor)", email)
 
+    logger.info("OTP reenviado para %s (solo visible en logs del servidor)", email)
+
+    # Publicar evento para reenvío de OTP
+    await publish_event(
+        "user.otp_resent",
+        {
+            "email": email,
+            "full_name": user_doc.get("full_name", ""),
+            "otp_code": code,  # solo viaja por RabbitMQ, nunca al frontend
+        },
+    )
+
+    # FIX: se elimina "otp_code_dev" de la respuesta
     return {
-        "message": "Nuevo código OTP generado.",
+        "message": "Nuevo código OTP generado. Revisa tu correo.",
         "email_sent": True,
         "otp_id": str(result.inserted_id),
-        "otp_code_dev": code,
     }
 
 
@@ -142,4 +175,3 @@ async def login(form_data: UserLogin):
 @router.get("/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
-

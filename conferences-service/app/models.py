@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 RoleType = Literal["super_admin", "web_master", "usuario_registrado"]
@@ -10,6 +10,11 @@ RoleType = Literal["super_admin", "web_master", "usuario_registrado"]
 class MongoBaseModel(BaseModel):
     class Config:
         populate_by_name = True
+
+    @field_validator("id", mode="before", check_fields=False)
+    @classmethod
+    def normalize_id(cls, value):
+        return str(value) if value is not None else value
 
 
 class Conference(MongoBaseModel):
