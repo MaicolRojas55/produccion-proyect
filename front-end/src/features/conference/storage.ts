@@ -1,8 +1,41 @@
-import type { Attendance, Conference, StudentAgendaItem, AgendaInscription } from "./types";
+/**
+ * El problema original:
+ * - Las conferencias se guardaban en localStorage EN PARALELO al backend
+ * - Esto causaba datos desactualizados, duplicados y pérdida de datos
+ *   si el usuario limpiaba el navegador
+ * - El apiClient ya tenía todos los métodos para CRUD en el backend
+ *
+ * La solución:
+ * - Se elimina todo el acceso a localStorage para conferencias
+ * - Las inscripciones de agenda (AgendaInscription) se mantienen en localStorage
+ *   porque son datos locales del usuario (no requieren servidor)
+ * - Todo lo demás (Conference, Attendance) debe venir del apiClient
+ *
+ * IMPORTANTE: Si algún componente usaba loadConferences() / saveConferences(),
+ * reemplázalo por: apiClient.getConferences() / apiClient.createConference()
+ */
 
-const CONF_KEY = "pp_conferences_v1";
-const ATT_KEY = "pp_attendance_v1";
-const AGENDA_KEY = "pp_student_agenda_v1";
+import type { AgendaInscription } from "./types";
+
+// ─── CONFERENCIAS ────────────────────────────────────────────────────────────
+// ELIMINADO: loadConferences(), saveConferences()
+// Usa apiClient.getConferences() y apiClient.createConference() en su lugar.
+//
+// Ejemplo de migración en un componente:
+//
+//   ANTES:
+//     const conferences = loadConferences()
+//
+//   DESPUÉS:
+//     const [conferences, setConferences] = useState<Conference[]>([])
+//     useEffect(() => {
+//       apiClient.getConferences().then(setConferences).catch(console.error)
+//     }, [])
+
+// ─── INSCRIPCIONES DE AGENDA (se mantienen locales) ──────────────────────────
+// Estas son inscripciones locales del usuario a sesiones de la agenda estática.
+// No requieren servidor porque son preferencias personales de visualización.
+
 const AGENDA_INSCRIPTIONS_KEY = "pp_agenda_inscriptions_v1";
 
 function safeParseJson<T>(raw: string | null): T | null {
@@ -14,35 +47,10 @@ function safeParseJson<T>(raw: string | null): T | null {
   }
 }
 
-export function loadConferences(): Conference[] {
-  const x = safeParseJson<Conference[]>(localStorage.getItem(CONF_KEY));
-  return Array.isArray(x) ? x : [];
-}
-
-export function saveConferences(items: Conference[]) {
-  localStorage.setItem(CONF_KEY, JSON.stringify(items));
-}
-
-export function loadAttendance(): Attendance[] {
-  const x = safeParseJson<Attendance[]>(localStorage.getItem(ATT_KEY));
-  return Array.isArray(x) ? x : [];
-}
-
-export function saveAttendance(items: Attendance[]) {
-  localStorage.setItem(ATT_KEY, JSON.stringify(items));
-}
-
-export function loadStudentAgenda(): StudentAgendaItem[] {
-  const x = safeParseJson<StudentAgendaItem[]>(localStorage.getItem(AGENDA_KEY));
-  return Array.isArray(x) ? x : [];
-}
-
-export function saveStudentAgenda(items: StudentAgendaItem[]) {
-  localStorage.setItem(AGENDA_KEY, JSON.stringify(items));
-}
-
 export function loadAgendaInscriptions(): AgendaInscription[] {
-  const x = safeParseJson<AgendaInscription[]>(localStorage.getItem(AGENDA_INSCRIPTIONS_KEY));
+  const x = safeParseJson<AgendaInscription[]>(
+    localStorage.getItem(AGENDA_INSCRIPTIONS_KEY)
+  );
   return Array.isArray(x) ? x : [];
 }
 
@@ -50,3 +58,8 @@ export function saveAgendaInscriptions(items: AgendaInscription[]) {
   localStorage.setItem(AGENDA_INSCRIPTIONS_KEY, JSON.stringify(items));
 }
 
+// ─── EXPORTACIONES ELIMINADAS (no borres si otro módulo las importa) ─────────
+// Si ves un error de "loadConferences is not exported", busca el componente
+// que lo importa y reemplázalo por apiClient.getConferences()
+
+export type { AgendaInscription };
