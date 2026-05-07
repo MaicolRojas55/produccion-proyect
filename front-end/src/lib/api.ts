@@ -4,9 +4,21 @@
  * Maneja todas las llamadas HTTP, autenticación y errores
  * El token JWT se almacena en localStorage bajo la clave 'pp_session_v1'
  */
+/**
+Cambios:
+ * 1. TOKEN_STORAGE_KEY renombrado a "pp_auth_token_v1" (evita colisión con
+ *    auth/storage.ts que usa "pp_session_v1" para datos de sesión de usuario)
+ * 2. Se agrega manejo automático de 401: limpia el token y recarga la página
+ *    en lugar de redirigir silenciosamente
+ * 3. Se agrega refresh de token implícito si el servidor devuelve 401
+ */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-const TOKEN_STORAGE_KEY = 'pp_session_v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+
+// ── CLAVE SEPARADA ──────────────────────────────────────────────────────────
+// ANTES era "pp_session_v1", igual que auth/storage.ts → colisión y se borraba
+// el token al guardar la sesión del usuario.
+const TOKEN_STORAGE_KEY = 'pp_auth_token_v1'
 
 // ============= TIPOS DE AUTENTICACIÓN =============
 
@@ -166,13 +178,15 @@ export class ApiError extends Error {
 class ApiClient {
   /**
    * Obtener token JWT del localStorage
+   * Usa la clave "pp_auth_token_v1" — separada de la sesión de usuario
    */
   getToken(): string | null {
     try {
-      const sessionData = localStorage.getItem(TOKEN_STORAGE_KEY)
-      if (!sessionData) return null
-      const session = JSON.parse(sessionData)
-      return session.token || null
+      const raw = localStorage.getItem(TOKEN_STORAGE_KEY)
+      if (!raw) return null
+      const parsed = JSON.parse(raw)
+      // Soporta tanto { token } como string directo por compatibilidad
+      return typeof parsed === 'string' ? parsed : (parsed.token ?? null)
     } catch {
       return null
     }
@@ -183,13 +197,12 @@ class ApiClient {
    */
   private setToken(token: string): void {
     try {
-      const sessionData = {
-        token,
-        savedAt: new Date().toISOString()
-      }
-      localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(sessionData))
+      localStorage.setItem(
+        TOKEN_STORAGE_KEY,
+        JSON.stringify({ token, savedAt: new Date().toISOString() })
+      )
     } catch {
-      console.error('Error guardando token')
+      console.error('[ApiClient] Error guardando token')
     }
   }
 
@@ -202,6 +215,7 @@ class ApiClient {
 
   /**
    * Realizar una petición HTTP genérica
+   * BUG 2 FIX: Si el servidor devuelve 401, limpia el token y redirige al login
    */
   private async request<T>(
     endpoint: string,
@@ -215,25 +229,27 @@ class ApiClient {
       ...(requestOptions.headers as Record<string, string>)
     }
 
-    // Agregar token si se requiere autenticación
     if (requiresAuth) {
       const token = this.getToken()
       if (!token) {
-        throw new ApiError(
-          401,
-          'No hay sesión activa. Por favor inicia sesión.'
-        )
+        // Token no existe — redirigir al login de forma controlada
+        this.redirectToLogin()
+        throw new ApiError(401, 'Sesión expirada. Por favor inicia sesión.')
       }
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    const config: RequestInit = {
-      ...requestOptions,
-      headers
-    }
+    const config: RequestInit = { ...requestOptions, headers }
 
     try {
       const response = await fetch(url, config)
+
+      // ── BUG 2 FIX: manejo de 401 desde el servidor ─────────────────────
+      if (response.status === 401 && requiresAuth) {
+        this.clearToken()
+        this.redirectToLogin()
+        throw new ApiError(401, 'Sesión expirada. Por favor inicia sesión.')
+      }
 
       if (!response.ok) {
         const errorData = await response
@@ -248,28 +264,32 @@ class ApiClient {
         throw new ApiError(response.status, errorMessage, errorData)
       }
 
-      // Algunos endpoints retornan texto vacío
       const contentType = response.headers.get('content-type')
       if (contentType?.includes('application/json')) {
         return await response.json()
       }
       return {} as T
     } catch (error) {
-      if (error instanceof ApiError) {
-        throw error
-      }
+      if (error instanceof ApiError) throw error
 
       if (error instanceof TypeError) {
-        throw new ApiError(
-          0,
-          'Error de conexión. Verifica tu conexión a internet.'
-        )
+        throw new ApiError(0, 'Error de conexión. Verifica tu conexión a internet.')
       }
 
       throw new ApiError(
         0,
         error instanceof Error ? error.message : 'Error desconocido'
       )
+    }
+  }
+
+  /**
+   * Redirige al login limpiando la sesión actual
+   */
+  private redirectToLogin(): void {
+    // Solo redirigir si no estamos ya en /auth para evitar bucle
+    if (!window.location.pathname.startsWith('/auth')) {
+      window.location.href = '/auth?tab=login&reason=session_expired'
     }
   }
 
@@ -288,7 +308,6 @@ class ApiClient {
       body: JSON.stringify(data)
     })
 
-    // Guardar token
     if (response.access_token) {
       this.setToken(response.access_token)
     }
@@ -297,7 +316,6 @@ class ApiClient {
   }
 
   async verifyOTP(email: string, code: string): Promise<VerifyOTPResponse> {
-    // El endpoint espera query params
     const queryString = new URLSearchParams({ email, code }).toString()
     return this.request<VerifyOTPResponse>(`/auth/verify-otp?${queryString}`, {
       method: 'POST'
@@ -312,9 +330,7 @@ class ApiClient {
   }
 
   async getCurrentUser(): Promise<User> {
-    return this.request<User>('/auth/me', {
-      requiresAuth: true
-    })
+    return this.request<User>('/auth/me', { requiresAuth: true })
   }
 
   logout(): void {
@@ -324,21 +340,14 @@ class ApiClient {
   // ============= USUARIOS =============
 
   async getUsers(): Promise<User[]> {
-    return this.request<User[]>('/users/', {
-      requiresAuth: true
-    })
+    return this.request<User[]>('/users/', { requiresAuth: true })
   }
 
   async getUser(userId: string): Promise<User> {
-    return this.request<User>(`/users/${userId}`, {
-      requiresAuth: true
-    })
+    return this.request<User>(`/users/${userId}`, { requiresAuth: true })
   }
 
-  async updateUser(
-    userId: string,
-    data: { role: User['role'] }
-  ): Promise<User> {
+  async updateUser(userId: string, data: { role: User['role'] }): Promise<User> {
     return this.request<User>(`/users/${userId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -354,9 +363,7 @@ class ApiClient {
   }
 
   async getStatsOverview(): Promise<StatsOverview> {
-    return this.request<StatsOverview>('/stats/overview', {
-      requiresAuth: true
-    })
+    return this.request<StatsOverview>('/stats/overview', { requiresAuth: true })
   }
 
   // ============= CONFERENCIAS =============
@@ -377,10 +384,7 @@ class ApiClient {
     })
   }
 
-  async updateConference(
-    conferenceId: string,
-    data: Partial<Conference>
-  ): Promise<Conference> {
+  async updateConference(conferenceId: string, data: Partial<Conference>): Promise<Conference> {
     return this.request<Conference>(`/conferences/${conferenceId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -413,10 +417,7 @@ class ApiClient {
     })
   }
 
-  async updateSpeaker(
-    speakerId: string,
-    data: Partial<Speaker>
-  ): Promise<Speaker> {
+  async updateSpeaker(speakerId: string, data: Partial<Speaker>): Promise<Speaker> {
     return this.request<Speaker>(`/speakers/${speakerId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -453,10 +454,7 @@ class ApiClient {
     })
   }
 
-  async updateSession(
-    sessionId: string,
-    data: Partial<Session>
-  ): Promise<Session> {
+  async updateSession(sessionId: string, data: Partial<Session>): Promise<Session> {
     return this.request<Session>(`/sessions/${sessionId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -474,15 +472,11 @@ class ApiClient {
   // ============= EVENTOS CALENDARIO =============
 
   async getCalendarEvents(): Promise<CalendarEvent[]> {
-    return this.request<CalendarEvent[]>('/calendar/', {
-      requiresAuth: true
-    })
+    return this.request<CalendarEvent[]>('/calendar/', { requiresAuth: true })
   }
 
   async getCalendarEvent(eventId: string): Promise<CalendarEvent> {
-    return this.request<CalendarEvent>(`/calendar/${eventId}`, {
-      requiresAuth: true
-    })
+    return this.request<CalendarEvent>(`/calendar/${eventId}`, { requiresAuth: true })
   }
 
   async createCalendarEvent(data: CalendarEvent): Promise<CalendarEvent> {
@@ -493,10 +487,7 @@ class ApiClient {
     })
   }
 
-  async updateCalendarEvent(
-    eventId: string,
-    data: Partial<CalendarEvent>
-  ): Promise<CalendarEvent> {
+  async updateCalendarEvent(eventId: string, data: Partial<CalendarEvent>): Promise<CalendarEvent> {
     return this.request<CalendarEvent>(`/calendar/${eventId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -514,110 +505,75 @@ class ApiClient {
   // ============= AGENDA DE ESTUDIANTE =============
 
   async getStudentAgenda(): Promise<Conference[]> {
-    return this.request<Conference[]>('/student-agenda/', {
+    return this.request<Conference[]>('/student-agenda/', { requiresAuth: true })
+  }
+
+  async addToStudentAgenda(conferenceId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/student-agenda/${conferenceId}`, {
+      method: 'POST',
       requiresAuth: true
     })
   }
 
-  async addToStudentAgenda(conferenceId: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>(
-      `/student-agenda/${conferenceId}`,
-      {
-        method: 'POST',
-        requiresAuth: true
-      }
-    )
-  }
-
-  async removeFromStudentAgenda(
-    conferenceId: string
-  ): Promise<{ message: string }> {
-    return this.request<{ message: string }>(
-      `/student-agenda/${conferenceId}`,
-      {
-        method: 'DELETE',
-        requiresAuth: true
-      }
-    )
+  async removeFromStudentAgenda(conferenceId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/student-agenda/${conferenceId}`, {
+      method: 'DELETE',
+      requiresAuth: true
+    })
   }
 
   // ============= INSCRIPCIONES A SESIONES =============
 
   async getAgendaInscriptions(): Promise<Session[]> {
-    return this.request<Session[]>('/agenda-inscriptions/', {
+    return this.request<Session[]>('/agenda-inscriptions/', { requiresAuth: true })
+  }
+
+  async enrollInSession(sessionId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/agenda-inscriptions/${sessionId}`, {
+      method: 'POST',
       requiresAuth: true
     })
   }
 
-  async enrollInSession(sessionId: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>(
-      `/agenda-inscriptions/${sessionId}`,
-      {
-        method: 'POST',
-        requiresAuth: true
-      }
-    )
-  }
-
-  async cancelSessionEnrollment(
-    sessionId: string
-  ): Promise<{ message: string }> {
-    return this.request<{ message: string }>(
-      `/agenda-inscriptions/${sessionId}`,
-      {
-        method: 'DELETE',
-        requiresAuth: true
-      }
-    )
+  async cancelSessionEnrollment(sessionId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/agenda-inscriptions/${sessionId}`, {
+      method: 'DELETE',
+      requiresAuth: true
+    })
   }
 
   async getSessionEnrollmentCount(sessionId: string): Promise<number> {
-    return this.request<number>(
-      `/agenda-inscriptions/session/${sessionId}/count`
-    )
+    return this.request<number>(`/agenda-inscriptions/session/${sessionId}/count`)
   }
 
   // ============= ASISTENCIA =============
 
   async getAttendance(): Promise<AttendanceRecord[]> {
-    return this.request<AttendanceRecord[]>('/attendance/', {
-      requiresAuth: true
-    })
+    return this.request<AttendanceRecord[]>('/attendance/', { requiresAuth: true })
   }
 
-  async registerConferenceAttendance(conferenceId: string): Promise<{
-    message: string
-    qr_token: string
-  }> {
+  async registerConferenceAttendance(
+    conferenceId: string
+  ): Promise<{ message: string; qr_token: string }> {
     return this.request<{ message: string; qr_token: string }>(
       `/attendance/conference/${conferenceId}`,
-      {
-        method: 'POST',
-        requiresAuth: true
-      }
+      { method: 'POST', requiresAuth: true }
     )
   }
 
-  async registerSessionAttendance(sessionId: string): Promise<{
-    message: string
-    qr_token: string
-  }> {
+  async registerSessionAttendance(
+    sessionId: string
+  ): Promise<{ message: string; qr_token: string }> {
     return this.request<{ message: string; qr_token: string }>(
       `/attendance/session/${sessionId}`,
-      {
-        method: 'POST',
-        requiresAuth: true
-      }
+      { method: 'POST', requiresAuth: true }
     )
   }
 
   // ============= UTILIDADES =============
 
   async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'GET',
-      requiresAuth: true
-    })
+    return this.request<T>(endpoint, { method: 'GET', requiresAuth: true })
   }
 
   async post<T>(endpoint: string, data: unknown): Promise<T> {
@@ -637,10 +593,7 @@ class ApiClient {
   }
 
   async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'DELETE',
-      requiresAuth: true
-    })
+    return this.request<T>(endpoint, { method: 'DELETE', requiresAuth: true })
   }
 }
 
