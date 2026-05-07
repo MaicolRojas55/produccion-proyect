@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coniiti-config
+  namespace: coniiti
+data:
+  JWT_ALGORITHM: HS256
+  EVENTS_EXCHANGE: coniiti.events
+  EVENTS_QUEUE: notifications.q
+  USERS_MONGODB_URI: mongodb://users-mongo:27017
+  USERS_MONGODB_DB: users_db
+  CONFERENCES_MONGODB_URI: mongodb://conferences-mongo:27017
+  CONFERENCES_MONGODB_DB: conferences_db
+  BACKEND_MONGODB_URI: mongodb://mongo:27017
+  BACKEND_MONGODB_DB: produccion_db
+  RABBITMQ_URL: amqp://coniiti_mq:changeme@rabbitmq:5672/
+  SQLITE_PATH: /data/notifications.sqlite
+  VITE_API_URL: /api
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-nginx-conf
+  namespace: coniiti
+data:
+  default.conf: |
+    server {
+        listen 80;
+
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'" always;
+        server_tokens off;
+        client_max_body_size 1m;
+
+        location /api/auth/ {
+            proxy_pass http://users-service:8000/auth/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/users/ {
+            proxy_pass http://users-service:8000/users/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/conferences/ {
+            proxy_pass http://conferences-service:8000/conferences/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/student-agenda/ {
+            proxy_pass http://conferences-service:8000/student-agenda/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/notifications/ {
+            proxy_pass http://notification-service:8002/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/ {
+            proxy_pass http://backend:8000/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
