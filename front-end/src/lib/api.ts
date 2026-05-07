@@ -2,11 +2,15 @@
  * API Client para conectar con el backend FastAPI
  *
  * Maneja todas las llamadas HTTP, autenticación y errores
- * El token JWT se almacena en localStorage bajo la clave 'pp_session_v1'
+ * El token JWT se almacena en localStorage bajo la clave 'pp_auth_token_v1'
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-const TOKEN_STORAGE_KEY = 'pp_session_v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+
+// ── CLAVE SEPARADA ──────────────────────────────────────────────────────────
+// ANTES era "pp_session_v1", igual que auth/storage.ts → colisión y se borraba
+// el token al guardar la sesión del usuario.
+const TOKEN_STORAGE_KEY = 'pp_auth_token_v1'
 
 // ============= TIPOS DE AUTENTICACIÓN =============
 
@@ -202,6 +206,7 @@ class ApiClient {
 
   /**
    * Realizar una petición HTTP genérica
+   * BUG 2 FIX: Si el servidor devuelve 401, limpia el token y redirige al login
    */
   private async request<T>(
     endpoint: string,
@@ -245,6 +250,11 @@ class ApiClient {
             ? errorData.detail
             : `Error ${response.status}`
 
+        // BUG 2 FIX: en 401 limpiar sesión y redirigir al login
+        if (response.status === 401) {
+          this.redirectToLogin()
+        }
+
         throw new ApiError(response.status, errorMessage, errorData)
       }
 
@@ -270,6 +280,16 @@ class ApiClient {
         0,
         error instanceof Error ? error.message : 'Error desconocido'
       )
+    }
+  }
+
+  /**
+   * Redirige al login limpiando la sesión actual
+   */
+  private redirectToLogin(): void {
+    this.clearToken()
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login'
     }
   }
 

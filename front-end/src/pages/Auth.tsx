@@ -99,22 +99,17 @@ export default function Auth() {
           setRegisterInfo('Error al registrar usuario')
         }
       } else {
-        const otpResult = await requestActivationOtp(email.trim().toLowerCase())
         setPendingActivation({
           email: email.trim().toLowerCase(),
           userId: result.userId,
           otpSent: true
         })
         setTab('register')
-        if (!otpResult.ok) {
-          setRegisterInfo('No se pudo generar el OTP de activación.')
-          toast.error('Error al generar el código OTP.')
-        } else {
-          setRegisterInfo(
-            'Cuenta creada correctamente. Ingresa el código OTP para activar.'
-          )
-          toast.success('Cuenta creada. Ingresa el OTP para activar.')
-        }
+
+        setRegisterInfo(
+          'Cuenta creada correctamente. Ingresa el código OTP para activar.'
+        )
+        toast.success('Cuenta creada. Revisa tu correo para el código OTP.')
       }
     } finally {
       setIsLoading(false)
