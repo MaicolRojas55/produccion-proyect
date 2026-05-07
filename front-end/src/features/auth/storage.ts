@@ -1,7 +1,20 @@
+/**
+ *Cambio: SESSION_KEY renombrado de "pp_session_v1" a "pp_session_user_v1"
+ * para que NUNCA colisione con TOKEN_STORAGE_KEY="pp_auth_token_v1" de api.ts.
+ *
+ * El bug original: ambos archivos usaban "pp_session_v1".
+ * Cuando saveSession() escribía la sesión del usuario (objeto Session),
+ * sobreescribía el token JWT → la sesión se perdía al registrar una conferencia.
+ */
+
 import type { Session, User } from "./types";
 
 const USERS_KEY = "pp_users_v1";
-const SESSION_KEY = "pp_session_v1";
+
+// ── FIX: clave distinta a "pp_session_v1" ──────────────────────────────────
+// api.ts usa "pp_auth_token_v1" para el JWT
+// este archivo usa "pp_session_user_v1" para los datos del usuario
+const SESSION_KEY = "pp_session_user_v1";
 
 function getStorage(): Storage | null {
   try {
@@ -47,4 +60,3 @@ export function clearSession() {
   const storage = getStorage();
   if (storage) storage.removeItem(SESSION_KEY);
 }
-
