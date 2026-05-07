@@ -1,3 +1,14 @@
+"""
+Problema:
+- El consumer de RabbitMQ consumía los eventos pero NO enviaba el email OTP.
+  Solo guardaba el evento en SQLite sin llamar a servicio_notificaciones.enviar_notificacion()
+- El evento "user.otp_resent" no estaba manejado
+
+Solución:
+- Se agrega lógica para detectar el tipo de evento y llamar al servicio de notificaciones
+- Se manejan: user.registered → OTP email, user.otp_resent → OTP email de reenvío
+"""
+
 import logging
 import asyncio
 import json
@@ -16,6 +27,60 @@ import aio_pika
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+
+async def _procesar_evento(event_type: str, payload: dict) -> None:
+    """
+    Despacha el evento al servicio de notificaciones según su tipo.
+    FIX: antes el consumer solo guardaba en SQLite sin enviar ningún email.
+    """
+    try:
+        # ── user.registered → enviar OTP de activación ────────────────────
+        if event_type == "user.registered":
+            solicitud = SolicitudNotificacion(
+                tipo="otp",
+                email_destino=payload.get("email", ""),
+                nombre_destinatario=payload.get("full_name"),
+                datos={
+                    "otp_code": payload.get("otp_code", ""),
+                    "expire_minutes": 10,
+                },
+            )
+            resultado = await servicio_notificaciones.enviar_notificacion(solicitud)
+            logger.info(
+                "otp_enviado email=%s enviada=%s modo=%s",
+                payload.get("email"),
+                resultado.enviada,
+                resultado.modo_envio,
+            )
+
+        # ── user.otp_resent → reenviar OTP ────────────────────────────────
+        elif event_type == "user.otp_resent":
+            solicitud = SolicitudNotificacion(
+                tipo="otp",
+                email_destino=payload.get("email", ""),
+                nombre_destinatario=payload.get("full_name"),
+                datos={
+                    "otp_code": payload.get("otp_code", ""),
+                    "expire_minutes": 10,
+                },
+            )
+            resultado = await servicio_notificaciones.enviar_notificacion(solicitud)
+            logger.info(
+                "otp_reenviado email=%s enviada=%s",
+                payload.get("email"),
+                resultado.enviada,
+            )
+
+        # ── conference.created → recordatorio (opcional, para el futuro) ──
+        elif event_type == "conference.created":
+            logger.info("conference.created recibido — sin acción de notificación configurada aún")
+
+        else:
+            logger.info("evento_sin_handler tipo=%s", event_type)
+
+    except Exception as e:
+        logger.error("error_procesando_evento tipo=%s error=%s", event_type, str(e))
 
 
 async def _consume_events_forever() -> None:
@@ -54,7 +119,12 @@ async def _consume_events_forever() -> None:
                                 payload_json=payload_json,
                                 processed_at=datetime.utcnow().isoformat(),
                             )
+
+                            # FIX: ahora sí despacha al servicio de notificaciones
+                            await _procesar_evento(event_type, payload)
+
                             logger.info("evento_consumido tipo=%s", event_type)
+
         except Exception as e:
             logger.warning("consumer_reconnect motivo=%s", str(e))
             await asyncio.sleep(2)
