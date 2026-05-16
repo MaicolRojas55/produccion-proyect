@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from bson import ObjectId
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 RoleType = Literal["super_admin", "web_master", "usuario_registrado"]
@@ -22,6 +23,19 @@ class Conference(MongoBaseModel):
     capacity: Optional[int] = None
     created_by_user_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    #: Clave estable compartida con la agenda SPA (ej. "d1-3"); enlaza Mongo ↔ Session.id del front-end.
+    agenda_session_id: Optional[str] = None
+    #: No se persiste en Mongo; solo se rellena en GET /conferences/ para cupos en la agenda.
+    enrollment_count: int = 0
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def coerce_object_id(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, ObjectId):
+            return str(v)
+        return str(v)
 
 
 class StudentAgendaItem(MongoBaseModel):
@@ -29,6 +43,15 @@ class StudentAgendaItem(MongoBaseModel):
     student_id: str
     conference_id: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def coerce_object_id(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, ObjectId):
+            return str(v)
+        return str(v)
 
 
 class TokenClaims(BaseModel):

@@ -13,7 +13,41 @@ Cambios:
  * 3. Se agrega refresh de token implícito si el servidor devuelve 401
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+/**
+ * Base de la API. Con Vite + Docker: suele ser `/api` (proxy → gateway).
+ * Si `VITE_API_URL` no empieza por `/` o `http`, se normaliza para no romper
+ * las peticiones cuando la SPA está en rutas como `/auth` (URL relativa incorrecta → 404).
+ */
+function normalizeApiBase(raw: string | undefined): string {
+  const v = (raw ?? '').trim()
+  if (!v) return '/api'
+  if (v.startsWith('http://') || v.startsWith('https://')) return v.replace(/\/$/, '')
+  return v.startsWith('/') ? v.replace(/\/$/, '') : `/${v}`.replace(/\/$/, '')
+}
+
+const API_BASE_URL = normalizeApiBase(import.meta.env.VITE_API_URL as string | undefined)
+
+/** URL final: siempre absoluta en el origen actual si la base es ruta (evita 404 bajo /auth). */
+function buildApiUrl(endpoint: string): string {
+  const ep = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
+    return `${API_BASE_URL}${ep}`
+  }
+  const path = `${API_BASE_URL}${ep}`.replace(/\/{2,}/g, '/')
+  if (typeof window === 'undefined') return path
+  try {
+    return new URL(path, window.location.origin).href
+  } catch {
+    return path
+  }
+}
+
+function defaultHttpErrorMessage(status: number): string {
+  if (status === 502 || status === 503) {
+    return 'Servicio no disponible (502/503). Revisa el gateway y los microservicios.'
+  }
+  return 'Error desconocido'
+}
 
 // ── CLAVE SEPARADA ──────────────────────────────────────────────────────────
 // ANTES era "pp_session_v1", igual que auth/storage.ts → colisión y se borraba
@@ -87,6 +121,10 @@ export interface Conference {
   location?: string
   capacity?: number
   created_by_user_id?: string
+  /** Alineado con Session.id de la agenda estática (`agendaData.ts`). */
+  agenda_session_id?: string
+  /** En GET /conferences/: cupos ocupados según `/student-agenda/`. */
+  enrollment_count?: number
 }
 
 export interface StatsOverview {
@@ -221,7 +259,7 @@ class ApiClient {
     endpoint: string,
     options: RequestInit & { requiresAuth?: boolean } = {}
   ): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`
+    const url = buildApiUrl(endpoint)
     const { requiresAuth = false, ...requestOptions } = options
 
     const headers: Record<string, string> = {
@@ -252,14 +290,32 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ detail: 'Error desconocido' }))
+        const ct = response.headers.get('content-type') || ''
+        let errorData: { detail?: unknown }
+        if (ct.includes('application/json')) {
+          errorData = await response
+            .json()
+            .catch(() => ({ detail: defaultHttpErrorMessage(response.status) }))
+        } else {
+          const text = await response.text().catch(() => '')
+          errorData = {
+            detail:
+              response.status === 502 || response.status === 503
+                ? 'El servidor intermedio no pudo contactar el microservicio (502/503). Tras recrear contenedores, ejecuta: docker compose restart gateway'
+                : text.trim().slice(0, 240) || defaultHttpErrorMessage(response.status)
+          }
+        }
 
-        const errorMessage =
-          typeof errorData.detail === 'string'
-            ? errorData.detail
-            : `Error ${response.status}`
+        let errorMessage = `Error ${response.status}`
+        const d = (errorData as { detail?: unknown }).detail
+        if (typeof d === 'string') {
+          errorMessage = d
+        } else if (Array.isArray(d)) {
+          errorMessage = d
+            .map((e: { msg?: string }) => e?.msg || '')
+            .filter(Boolean)
+            .join('. ')
+        }
 
         throw new ApiError(response.status, errorMessage, errorData)
       }

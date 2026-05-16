@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from bson import ObjectId
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 RoleType = Literal["super_admin", "web_master", "usuario_registrado"]
@@ -21,6 +22,15 @@ class User(MongoBaseModel):
     is_active: bool = True
     is_verified: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def coerce_object_id(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, ObjectId):
+            return str(v)
+        return str(v)
 
 
 class UserPublic(BaseModel):

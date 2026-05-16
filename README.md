@@ -65,7 +65,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 cd ../front-end
 npm install
 cp .env.example .env
-# VITE_API_URL=http://localhost:8000
+# Con microservicios + gateway en el host (puerto 8080): VITE_API_URL=/api y API_PROXY_TARGET=http://127.0.0.1:8080
+# Solo backend monolito en :8000: VITE_API_URL=http://localhost:8000
 npm run dev
 ```
 
@@ -99,7 +100,7 @@ docker compose exec backend python init_db.py
 | Backend legacy (fallback) | [http://localhost:8000/docs](http://localhost:8000/docs) |
 | Notificaciones | [http://localhost:8002/health](http://localhost:8002/health) |
 
-El front en Compose usa `VITE_API_URL=http://localhost:8080/api` para consumir el gateway como punto único.
+El front en Compose usa `VITE_API_URL=/api` y el **proxy de Vite** (`API_PROXY_TARGET=http://gateway:80`) para que el navegador solo hable con `:5173`; las peticiones a `/api/*` las reenvía el dev server al gateway.
 
 ### Ruteo en el gateway
 
@@ -181,7 +182,7 @@ Si `processed_events_total` crece y los logs muestran `evento_consumido`, la res
 
 **Frontend** (`front-end/.env`)
 
-- `VITE_API_URL` — base de la API: `http://localhost:8000` en local; `http://localhost:8080/api` con Docker Compose y Nginx.
+- `VITE_API_URL` — base de la API: `http://localhost:8000` si llamas directo a uvicorn; **`/api`** con Vite + proxy (recomendado con Compose: mismo origen `:5173` y `API_PROXY_TARGET` hacia el gateway).
 
 **API Gateway** y **notification-service**: ejemplos en `api-gateway/.env.example` y `notification-service/.env.example`.
 

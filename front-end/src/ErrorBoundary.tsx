@@ -41,8 +41,8 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.state.error.message}
           </pre>
           <p>
-            Ejecuta el frontend desde la carpeta <code>frontend</code> y abre{" "}
-            <a href="http://localhost:8080">http://localhost:8080</a>
+            Ejecuta el frontend desde la carpeta <code>front-end</code> y abre{" "}
+            <a href="http://localhost:5173">http://localhost:5173</a>
           </p>
           <button
             type="button"

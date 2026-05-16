@@ -18,11 +18,18 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import EmailStr
 
-from .auth import authenticate_user, create_access_token, get_current_user, get_password_hash
+from .auth import (
+    create_access_token,
+    get_current_user,
+    get_password_hash,
+    get_user_by_email,
+    verify_password,
+)
 from .config import settings
 from .db import users_collection, otps_collection
 from .events import publish_event
-from .models import Token, User, UserCreate, UserLogin
+from .models import Token, User, UserCreate, UserLogin, UserPublic
+from .routes_users import to_public
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +45,8 @@ async def register(user_data: UserCreate):
     existing = await users_collection.find_one({"email": user_data.email})
     if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este correo ya está registrado",
         )
 
     hashed_password = get_password_hash(user_data.password)
@@ -156,20 +164,36 @@ async def resend_otp(email: EmailStr):
 
 @router.post("/token", response_model=Token)
 async def login(form_data: UserLogin):
-    user = await authenticate_user(form_data.email, form_data.password)
-    if not user:
+    user = await get_user_by_email(form_data.email)
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Correo o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cuenta pendiente de verificación. Ingresa el código OTP enviado al correo.",
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cuenta inactiva. Contacta al administrador.",
+        )
+
+    if not user.id:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Usuario sin identificador válido",
+        )
 
     access_token = create_access_token(
-        {"sub": str(user.email), "user_id": str(user.id), "role": user.role}
+        {"sub": str(user.email), "user_id": user.id, "role": user.role}
     )
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.get("/me", response_model=User)
+@router.get("/me", response_model=UserPublic)
 async def read_users_me(current_user: User = Depends(get_current_user)):
-    return current_user
+    return to_public(current_user)

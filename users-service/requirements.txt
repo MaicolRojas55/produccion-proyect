@@ -5,5 +5,7 @@ pydantic==2.9.2
 pydantic-settings==2.6.1
 python-jose==3.3.0
 passlib[bcrypt]==1.7.4
+# passlib 1.7.4 + bcrypt>=4.1 rompe al hashear (ValueError 72 bytes en detect_wrap_bug)
+bcrypt==4.0.1
 email-validator==2.2.0
 aio-pika==9.4.3
