@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 from bson import ObjectId
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 RoleType = Literal["super_admin", "web_master", "usuario_registrado"]
