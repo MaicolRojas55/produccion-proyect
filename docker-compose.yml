@@ -5,8 +5,9 @@ services:
     ports:
       - "5173:5173"
     environment:
-      # Debe incluir /api: Nginx en gateway solo enruta ese prefijo al backend.
-      - VITE_API_URL=http://localhost:8080/api
+      # El navegador llama solo a :5173; Vite reenvía /api al gateway (evita CORS y :8080 caído en el cliente).
+      - VITE_API_URL=/api
+      - API_PROXY_TARGET=http://gateway:80
     depends_on:
       - gateway
     networks:

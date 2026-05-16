@@ -6,5 +6,5 @@ export default function AppGate() {
   if (!user) return <Navigate to="/auth" replace />
   if (user.role === 'super_admin' || user.role === 'web_master')
     return <Navigate to="/dashboard" replace />
-  return <Navigate to="/agenda" replace />
+  return <Navigate to="/student" replace />
 }

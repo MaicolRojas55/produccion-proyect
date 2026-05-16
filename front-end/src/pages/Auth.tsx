@@ -65,7 +65,8 @@ export default function Auth() {
 
   const goAfterAuth = (isStaff: boolean) => {
     const from =
-      location.state?.from?.pathname || (isStaff ? '/dashboard' : '/agenda')
+      location.state?.from?.pathname ||
+      (isStaff ? '/dashboard' : '/student')
     navigate(from, { replace: true })
   }
 
@@ -93,23 +94,29 @@ export default function Auth() {
       })
 
       if (result.ok === false) {
-        if (result.reason === 'EMAIL_TAKEN') {
+        const r = result.reason.toLowerCase()
+        if (
+          r.includes('correo ya') ||
+          r.includes('email') ||
+          r.includes('registrado')
+        ) {
           setRegisterInfo('Este email ya está registrado')
         } else {
-          setRegisterInfo('Error al registrar usuario')
+          setRegisterInfo(result.reason || 'Error al registrar usuario')
         }
       } else {
+        // El OTP ya se creó en /auth/register; no llamar a resend-otp aquí
+        // (invalidaría el código anterior antes de que el usuario lo use).
         setPendingActivation({
           email: email.trim().toLowerCase(),
           userId: result.userId,
           otpSent: true
         })
         setTab('register')
-
         setRegisterInfo(
-          'Cuenta creada correctamente. Ingresa el código OTP para activar.'
+          'Cuenta creada. Revisa tu correo (o los logs del servidor en desarrollo) e ingresa el código OTP.'
         )
-        toast.success('Cuenta creada. Revisa tu correo para el código OTP.')
+        toast.success('Cuenta creada. Ingresa el OTP para activar.')
       }
     } finally {
       setIsLoading(false)
@@ -177,7 +184,7 @@ export default function Auth() {
       })
 
       if (!result.ok) {
-        setLoginError('Credenciales inválidas')
+        setLoginError(result.reason)
       } else {
         toast.success('Inicio de sesión exitoso')
         goAfterAuth(result.user.role !== 'usuario_registrado')

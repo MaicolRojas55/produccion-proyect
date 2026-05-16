@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { agendaData as defaultAgenda } from '@/data/agendaData'
-import { useEditableAgenda } from '@/features/agenda/storage'
+import { agendaData } from '@/data/agendaData'
 import AgendaHero from '@/components/shared/AgendaHero'
 import DayTabContent from '@/components/shared/DayTabContent'
 import { AppNavbar } from '@/components/layout/AppNavbar'
@@ -22,24 +21,15 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/useAuth'
 import { isRegisteredUserRole } from '@/features/auth/types'
-import {
-  loadAgendaInscriptions,
-  saveAgendaInscriptions
-} from '@/features/conference/storage'
-import type { AgendaInscription } from '@/features/conference/types'
+import { apiClient, ApiError } from '@/lib/api'
+import type { Conference as ApiConference } from '@/lib/api'
+import { toast } from 'sonner'
 import {
   getStudentQrPayloadForConference,
   isQrWindowOpen,
   minutesUntilQrOpens
 } from '@/features/student-qr/studentQr'
 import type { User } from '@/features/auth/types'
-
-function newId() {
-  const c = crypto as unknown as { randomUUID?: () => string }
-  return (
-    c?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`
-  )
-}
 
 type QrModalSession = {
   sessionId: string
@@ -133,13 +123,55 @@ function AgendaQrModalContent({
 
 const Agenda = () => {
   const [activeDay, setActiveDay] = useState(0)
-  const [tick, setTick] = useState(0)
+  const [liveSync, setLiveSync] = useState(0)
   const { user } = useAuth()
-  const { agenda: agendaData } = useEditableAgenda()
+
+  const [conferencesByAgendaId, setConferencesByAgendaId] = useState<
+    Record<string, ApiConference>
+  >({})
+  const [studentAgendaList, setStudentAgendaList] = useState<ApiConference[]>(
+    []
+  )
 
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [])
+
+  useEffect(() => {
+    if (!user || !isRegisteredUserRole(user.role)) {
+      setConferencesByAgendaId({})
+      setStudentAgendaList([])
+      return
+    }
+
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const [all, mine] = await Promise.all([
+          apiClient.getConferences(),
+          apiClient.getStudentAgenda()
+        ])
+        if (cancelled) return
+
+        const bySid: Record<string, ApiConference> = {}
+        for (const c of all) {
+          if (c.agenda_session_id) bySid[c.agenda_session_id] = c
+        }
+        setConferencesByAgendaId(bySid)
+        setStudentAgendaList(mine)
+      } catch (err) {
+        const message =
+          err instanceof ApiError ? err.message : 'Error al cargar la agenda'
+        toast.error(message)
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [user, liveSync])
 
   // Filtros
   const [selectedLocation, setSelectedLocation] = useState<string>('all')
@@ -150,28 +182,22 @@ const Agenda = () => {
     null
   )
 
-  const inscriptionsList = useMemo(() => {
-    void tick
-    return loadAgendaInscriptions()
-  }, [tick])
-
   const totalInscriptionsCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    inscriptionsList.forEach((i) => {
-      counts[i.sessionId] = (counts[i.sessionId] || 0) + 1
-    })
+    for (const [sid, conf] of Object.entries(conferencesByAgendaId)) {
+      counts[sid] = conf.enrollment_count ?? 0
+    }
     return counts
-  }, [inscriptionsList])
+  }, [conferencesByAgendaId])
 
   const myInscriptions = useMemo(() => {
-    if (!user) return {}
-    const list = inscriptionsList.filter((i) => i.userId === user.id)
     const map: Record<string, boolean> = {}
-    list.forEach((i) => {
-      map[i.sessionId] = true
-    })
+    for (const c of studentAgendaList) {
+      const sid = c.agenda_session_id
+      if (sid) map[sid] = true
+    }
     return map
-  }, [inscriptionsList, user])
+  }, [studentAgendaList])
 
   const uniqueLocations = useMemo(() => {
     const locs = new Set<string>()
@@ -209,7 +235,7 @@ const Agenda = () => {
     return { ...currentDay, sessions: filteredSessions }
   }, [activeDay, selectedLocation, selectedType, selectedSpeaker, agendaData])
 
-  const canInscribe = user && isRegisteredUserRole(user.role)
+  const canInscribe = Boolean(user && user.id && isRegisteredUserRole(user.role))
   const currentUserId = canInscribe ? user.id : null
 
   const onVerQr = useCallback(
@@ -226,23 +252,27 @@ const Agenda = () => {
   )
 
   const onInscribe = useCallback(
-    (sessionId: string) => {
-      if (!user) return
-      const all = loadAgendaInscriptions()
-      const exists = all.some(
-        (i) => i.userId === user.id && i.sessionId === sessionId
-      )
-      if (exists) return
-      const item: AgendaInscription = {
-        id: newId(),
-        userId: user.id,
-        sessionId,
-        createdAt: new Date().toISOString()
+    async (sessionId: string) => {
+      if (!user || !isRegisteredUserRole(user.role)) return
+      const conf = conferencesByAgendaId[sessionId]
+      const cid = conf?._id ?? conf?.id
+      if (!cid) {
+        toast.error(
+          'Esta sesión no está vinculada al servidor de conferencias. Reinicia los contenedores o revisa los datos.'
+        )
+        return
       }
-      saveAgendaInscriptions([...all, item])
-      setTick((t) => t + 1)
+      try {
+        await apiClient.addToStudentAgenda(cid)
+        toast.success('Inscripción guardada · visible en Mi espacio')
+        setLiveSync((n) => n + 1)
+      } catch (err) {
+        const message =
+          err instanceof ApiError ? err.message : 'No se pudo completar la inscripción'
+        toast.error(message)
+      }
     },
-    [user]
+    [user, conferencesByAgendaId]
   )
 
   return (

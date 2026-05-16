@@ -10,6 +10,50 @@ import type { Role, User } from './types'
 import { getDeviceId } from '@/features/device/device'
 import { apiClient, ApiError } from '@/lib/api'
 
+/** Normaliza la respuesta de `/auth/me` para que siempre exista `id` (evita UX rota en Agenda). */
+function mapBackendUser(data: unknown): User | null {
+  if (!data || typeof data !== 'object') return null
+  const o = data as Record<string, unknown>
+  const rawId = o.id ?? o._id
+  const id =
+    typeof rawId === 'string'
+      ? rawId
+      : rawId !== undefined && rawId !== null
+        ? String(rawId)
+        : ''
+  if (!id) return null
+
+  const email = typeof o.email === 'string' ? o.email : ''
+  const role = o.role as User['role']
+  if (
+    role !== 'super_admin' &&
+    role !== 'web_master' &&
+    role !== 'usuario_registrado'
+  ) {
+    return null
+  }
+
+  const full_name =
+    typeof o.full_name === 'string'
+      ? o.full_name
+      : typeof o.nombre === 'string'
+        ? o.nombre
+        : undefined
+
+  return {
+    id,
+    email,
+    role,
+    full_name,
+    nombre: typeof o.nombre === 'string' ? o.nombre : undefined,
+    activated: typeof o.activated === 'boolean' ? o.activated : undefined,
+    meta:
+      typeof o.meta === 'object' && o.meta !== null && !Array.isArray(o.meta)
+        ? (o.meta as Record<string, string>)
+        : undefined
+  }
+}
+
 type LoginInput = {
   email: string
   password: string
@@ -62,8 +106,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         getDeviceId()
         const token = apiClient.getToken()
         if (token) {
-          const currentUser = await apiClient.getCurrentUser()
-          setUser(currentUser as User)
+          const payload = await apiClient.getCurrentUser()
+          const currentUser = mapBackendUser(payload)
+          setUser(currentUser)
+          if (!currentUser) apiClient.logout()
         }
       } catch (err) {
         console.log('No usuario autenticado al iniciar')
@@ -85,13 +131,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     > => {
       try {
         setError(null)
-        const response = await apiClient.login({ email, password })
+        await apiClient.login({ email, password })
 
-        // Token es guardado automáticamente por apiClient
-        const currentUser = await apiClient.getCurrentUser()
-        setUser(currentUser as User)
+        // Token guardado por apiClient; perfil desde /auth/me
+        const payload = await apiClient.getCurrentUser()
+        const currentUser = mapBackendUser(payload)
+        if (!currentUser) {
+          apiClient.logout()
+          return { ok: false, reason: 'Respuesta de usuario inválida' }
+        }
+        setUser(currentUser)
 
-        return { ok: true, user: currentUser as User }
+        return { ok: true, user: currentUser }
       } catch (err) {
         const message =
           err instanceof ApiError ? err.message : 'Error de conexión'

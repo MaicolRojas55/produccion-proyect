@@ -7,15 +7,18 @@ from .routes_users import router as users_router
 
 app = FastAPI(title="Users Service", version="1.0.0")
 
+# No usar allow_origins=["*"] con allow_credentials=True: el navegador bloquea CORS.
+_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    # Servicios internos: solo el gateway Nginx accede directamente.
-    # Si se añade frontend adicional, agrega su origen aquí.
-    allow_origins=[
-        "http://gateway",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-    ],
+    allow_origins=_origins,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:[0-9]+)?",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],

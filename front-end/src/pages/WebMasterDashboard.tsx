@@ -6,11 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { getHomeContent, useHomeContent } from "@/features/content/storage";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+
 import {
   Columns3,
-  LayoutList,
   CalendarDays,
   Save,
   ArrowLeft,
@@ -23,14 +21,14 @@ import {
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, ApiError, type Conference, type StatsOverview } from "@/lib/api";
-import { useEditableAgenda } from "@/features/agenda/storage";
 import SessionCard from "@/components/shared/SessionCard";
-import { Session, SessionType } from "@/data/agendaData";
+import { SessionType, agendaData } from "@/data/agendaData";
 
-function newId() {
-  const c = crypto as unknown as { randomUUID?: () => string };
-  return c?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
+const AGENDA_PUBLIC_DAY_COUNT = agendaData.length;
+const AGENDA_PUBLIC_SESSION_TOTAL = agendaData.reduce(
+  (acc, day) => acc + day.sessions.length,
+  0,
+);
 
 function localInputToIso(value: string): string {
   if (!value) return "";
@@ -100,7 +98,7 @@ type ReunionFormState = {
 };
 
 export default function WebMasterDashboard() {
-  type Tab = "resumen" | "reuniones" | "agenda" | "guia";
+  type Tab = "resumen" | "reuniones" | "guia";
   const [activeTab, setActiveTab] = useState<Tab>("resumen");
   const { toast } = useToast();
   const [apiStats, setApiStats] = useState<StatsOverview | null>(null);
@@ -237,68 +235,6 @@ export default function WebMasterDashboard() {
   const previewTime = reunionForm.start_at ? formatTimeHm(localInputToIso(reunionForm.start_at)) : "00:00";
   const previewEndTime = reunionForm.end_at ? formatTimeHm(localInputToIso(reunionForm.end_at)) : "00:00";
 
-  const { agenda, updateAgenda } = useEditableAgenda();
-  const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Session> | null>(null);
-
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: formData?.description || "",
-    onUpdate: ({ editor }) => {
-      setFormData((prev) => (prev ? { ...prev, description: editor.getHTML() } : null));
-    },
-  });
-
-  useEffect(() => {
-    if (editor && formData && formData.description !== editor.getHTML()) {
-      editor.commands.setContent(formData.description || "");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSessionId]);
-
-  const activeDay = agenda[selectedDayIdx];
-  const totalSessionsCount = agenda.reduce((acc, curr) => acc + curr.sessions.length, 0);
-
-  const handleSelectSession = (id: string) => {
-    const s = activeDay.sessions.find((x) => x.id === id);
-    if (s) {
-      setSelectedSessionId(s.id);
-      setFormData({ ...s });
-    }
-  };
-
-  const handleSaveSession = () => {
-    if (!formData || !selectedSessionId) return;
-    const newAgenda = [...agenda];
-    const daySessions = [...newAgenda[selectedDayIdx].sessions];
-    const sIdx = daySessions.findIndex((s) => s.id === selectedSessionId);
-    if (sIdx > -1) {
-      daySessions[sIdx] = { ...daySessions[sIdx], ...formData } as Session;
-      newAgenda[selectedDayIdx].sessions = daySessions;
-      updateAgenda(newAgenda);
-      toast({ title: "Agenda local guardada", description: "Los cambios viven en este navegador (local)." });
-    }
-  };
-
-  const handleCreateNewSession = () => {
-    const newAgenda = [...agenda];
-    const newSession: Session = {
-      id: newId(),
-      time: "10:00",
-      endTime: "11:00",
-      title: "Nueva sesión",
-      type: "conference",
-      location: "Auditorio Principal",
-      speaker: "Por confirmar",
-    };
-    newAgenda[selectedDayIdx].sessions.push(newSession);
-    updateAgenda(newAgenda);
-    setSelectedSessionId(newSession.id);
-    setFormData(newSession);
-    toast({ title: "Sesión nueva", description: "Edita y guarda; es independiente de las reuniones API." });
-  };
-
   const tabBtn = (id: Tab, label: React.ReactNode, icon?: React.ReactNode) => (
     <Button
       variant={activeTab === id ? "default" : "ghost"}
@@ -329,7 +265,11 @@ export default function WebMasterDashboard() {
             </div>
             <div>
               <h1 className="font-heading font-black text-xl tracking-tight text-foreground">CONIITI · Editor de contenido</h1>
-              <p className="text-xs text-muted-foreground">Reuniones en servidor · Agenda local en el navegador</p>
+              <p className="text-xs text-muted-foreground">
+                Reuniones e inscripciones vía microservicios; la grilla visible en Agenda sale de{" "}
+                <span className="font-mono text-foreground">agendaData.ts</span> más los datos enlazados
+                (<span className="font-mono">agenda_session_id</span>)
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -353,7 +293,6 @@ export default function WebMasterDashboard() {
         <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-card border border-border shadow-sm mb-8">
           {tabBtn("resumen", "Resumen", null)}
           {tabBtn("reuniones", "Reuniones (servidor)", <CalendarDays className="w-4 h-4 mr-2" />)}
-          {tabBtn("agenda", "Agenda local", <LayoutList className="w-4 h-4 mr-2" />)}
           {tabBtn("guia", "Portada e imágenes", <ImageIcon className="w-4 h-4 mr-2" />)}
         </div>
 
@@ -362,9 +301,11 @@ export default function WebMasterDashboard() {
             <div>
               <h2 className="text-2xl font-bold text-foreground">Resumen</h2>
               <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-                Las <strong className="text-foreground">reuniones</strong> (API) se editan en{" "}
-                <strong className="text-purple-700">Reuniones (servidor)</strong>. La{" "}
-                <strong className="text-foreground">agenda local</strong> es un borrador en este navegador (localStorage).
+                Las reuniones (<strong className="text-foreground">inscripciones y cupos</strong>) están en{" "}
+                <strong className="text-purple-700">Reuniones (servidor)</strong>. La tabla horaria que ve el público
+                en la ruta Agenda es el archivo <strong className="text-foreground">agendaData.ts</strong>; cada sesión
+                inscribible debe tener su fila enlazada en API con{" "}
+                <strong className="text-foreground">agenda_session_id</strong> (seed del microservicio).
               </p>
             </div>
             {apiStats && (
@@ -386,16 +327,16 @@ export default function WebMasterDashboard() {
               </div>
             )}
             <div className="grid md:grid-cols-3 gap-4">
-              <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-200 shadow-sm">
+                  <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-200 shadow-sm">
                 <CardContent className="p-6">
-                  <div className="text-sm text-purple-800 font-semibold mb-1">Sesiones en agenda local</div>
-                  <div className="text-4xl font-black text-foreground">{totalSessionsCount}</div>
+                  <div className="text-sm text-purple-800 font-semibold mb-1">Sesiones en agenda publicada</div>
+                  <div className="text-4xl font-black text-foreground">{AGENDA_PUBLIC_SESSION_TOTAL}</div>
                 </CardContent>
               </Card>
               <Card className="bg-card border-border shadow-sm">
                 <CardContent className="p-6">
-                  <div className="text-sm text-muted-foreground font-semibold mb-1">Días en agenda local</div>
-                  <div className="text-4xl font-black text-foreground">{agenda.length}</div>
+                  <div className="text-sm text-muted-foreground font-semibold mb-1">Días en agenda publicada</div>
+                  <div className="text-4xl font-black text-foreground">{AGENDA_PUBLIC_DAY_COUNT}</div>
                 </CardContent>
               </Card>
               <Card className="bg-card border-border shadow-sm">
@@ -403,8 +344,8 @@ export default function WebMasterDashboard() {
                   <Button onClick={() => setActiveTab("reuniones")} className="bg-purple-600 hover:bg-purple-700 w-full">
                     Ir a reuniones API
                   </Button>
-                  <Button variant="outline" className="w-full" onClick={() => setActiveTab("agenda")}>
-                    Ir a agenda local
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link to="/agenda">Ver agenda pública</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -622,169 +563,6 @@ export default function WebMasterDashboard() {
                     />
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "agenda" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-300">
-            <Card className="lg:col-span-3 bg-card border-border shadow-sm">
-              <CardHeader className="py-4 border-b border-border">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Días y sesiones</CardTitle>
-                  <Button variant="ghost" size="icon" onClick={handleCreateNewSession} title="Nueva sesión">
-                    <Plus className="w-5 h-5 text-purple-700" />
-                  </Button>
-                </div>
-                <CardDescription className="text-xs">Solo en este navegador</CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 pt-4">
-                <Select
-                  value={String(selectedDayIdx)}
-                  onValueChange={(v) => {
-                    setSelectedDayIdx(Number(v));
-                    setSelectedSessionId(null);
-                  }}
-                >
-                  <SelectTrigger className="mb-4">
-                    <SelectValue placeholder="Día" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {agenda.map((d, i) => (
-                      <SelectItem key={i} value={String(i)}>
-                        {d.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
-                  {activeDay.sessions.map((s) => (
-                    <div
-                      key={s.id}
-                      onClick={() => handleSelectSession(s.id)}
-                      className={`p-3 rounded-lg cursor-pointer border text-sm transition-colors ${
-                        selectedSessionId === s.id ? "bg-purple-50 border-purple-200" : "border-border hover:bg-muted/50"
-                      }`}
-                    >
-                      <div className="font-semibold line-clamp-1 text-foreground">{s.title}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {s.time} – {s.endTime}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {formData && selectedSessionId ? (
-              <Card className="lg:col-span-5 bg-card border-border shadow-sm">
-                <CardHeader className="border-b border-border pb-4">
-                  <CardTitle className="text-xl flex items-center justify-between gap-2">
-                    Editar sesión local
-                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={handleSaveSession}>
-                      <Save className="w-4 h-4 mr-2" /> Guardar
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label>Hora inicio</Label>
-                      <Input value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Hora fin</Label>
-                      <Input value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Título</Label>
-                    <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label>Conferencista</Label>
-                      <Input value={formData.speaker || ""} onChange={(e) => setFormData({ ...formData, speaker: e.target.value })} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Lugar</Label>
-                      <Input value={formData.location || ""} onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label>Tipo</Label>
-                      <Select value={formData.type} onValueChange={(v: SessionType) => setFormData({ ...formData, type: v })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(["keynote", "conference", "workshop", "panel", "networking", "break"] as const).map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {t}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Track</Label>
-                      <Input value={formData.track || ""} onChange={(e) => setFormData({ ...formData, track: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="space-y-1 pt-2">
-                    <Label>Descripción</Label>
-                    <div className="border border-border rounded-lg overflow-hidden bg-background">
-                      <div className="bg-muted/50 p-2 flex gap-2 border-b border-border">
-                        <Button type="button" variant="ghost" size="sm" onClick={() => editor?.chain().focus().toggleBold().run()}>
-                          B
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => editor?.chain().focus().toggleItalic().run()}>
-                          I
-                        </Button>
-                      </div>
-                      <div className="p-3 min-h-[120px]">
-                        <EditorContent editor={editor} className="prose prose-sm max-w-none focus:outline-none dark:prose-invert" />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="lg:col-span-5 flex flex-col items-center justify-center p-12 text-center text-muted-foreground rounded-xl border border-dashed border-border bg-muted/20">
-                <CalendarDays className="w-12 h-12 mb-4 opacity-50" />
-                <p>Elige una sesión de la lista</p>
-              </div>
-            )}
-
-            <div className="lg:col-span-4">
-              <div className="sticky top-24">
-                <h3 className="font-semibold text-muted-foreground mb-3 text-xs uppercase tracking-wide">Vista previa</h3>
-                {formData ? (
-                  <div className="rounded-xl border border-border bg-muted/30 p-3">
-                    <div className="pointer-events-none opacity-95 scale-[0.9] origin-top text-foreground">
-                      <SessionCard
-                        sessionId={formData.id!}
-                        index={0}
-                        sessionDate={activeDay.date}
-                        isLoggedIn={false}
-                        isInscribed={false}
-                        totalInscriptions={0}
-                        time={formData.time!}
-                        endTime={formData.endTime!}
-                        title={formData.title!}
-                        type={formData.type!}
-                        speaker={formData.speaker}
-                        location={formData.location!}
-                        track={formData.track}
-                        description={formData.description}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="aspect-[4/3] bg-muted/40 rounded-xl border border-border flex items-center justify-center text-muted-foreground text-sm">Previsualización</div>
-                )}
               </div>
             </div>
           </div>
