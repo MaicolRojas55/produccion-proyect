@@ -2,7 +2,7 @@
  * API Client para conectar con el backend FastAPI
  *
  * Maneja todas las llamadas HTTP, autenticación y errores
- * El token JWT se almacena en localStorage bajo la clave 'pp_session_v1'
+ * El token JWT se almacena en localStorage bajo la clave 'pp_auth_token_v1'
  */
 /**
 Cambios:
@@ -317,6 +317,11 @@ class ApiClient {
             .join('. ')
         }
 
+        // BUG 2 FIX: en 401 limpiar sesión y redirigir al login
+        if (response.status === 401) {
+          this.redirectToLogin()
+        }
+
         throw new ApiError(response.status, errorMessage, errorData)
       }
 
@@ -343,9 +348,9 @@ class ApiClient {
    * Redirige al login limpiando la sesión actual
    */
   private redirectToLogin(): void {
-    // Solo redirigir si no estamos ya en /auth para evitar bucle
-    if (!window.location.pathname.startsWith('/auth')) {
-      window.location.href = '/auth?tab=login&reason=session_expired'
+    this.clearToken()
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login'
     }
   }
 

@@ -11,7 +11,7 @@ import type { Session, User } from "./types";
 
 const USERS_KEY = "pp_users_v1";
 
-// ── FIX: clave distinta a "pp_session_v1" ──────────────────────────────────
+// FIX: clave distinta a "pp_session_v1"
 // api.ts usa "pp_auth_token_v1" para el JWT
 // este archivo usa "pp_session_user_v1" para los datos del usuario
 const SESSION_KEY = "pp_session_user_v1";

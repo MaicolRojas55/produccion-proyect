@@ -83,51 +83,51 @@ async def _procesar_evento(event_type: str, payload: dict) -> None:
         logger.error("error_procesando_evento tipo=%s error=%s", event_type, str(e))
 
 
+
 async def _consume_events_forever() -> None:
-    while True:
-        try:
-            connection = await aio_pika.connect_robust(configuracion.rabbitmq_url)
-            async with connection:
-                channel = await connection.channel()
-                exchange = await channel.declare_exchange(
-                    configuracion.events_exchange,
-                    aio_pika.ExchangeType.TOPIC,
-                    durable=True,
-                )
-                queue = await channel.declare_queue(
-                    configuracion.events_queue,
-                    durable=True,
-                )
-                await queue.bind(exchange, routing_key="user.*")
-                await queue.bind(exchange, routing_key="conference.*")
+  while True:
+    try:
+      connection = await aio_pika.connect_robust(configuracion.rabbitmq_url)
+      async with connection:
+        channel = await connection.channel()
+        exchange = await channel.declare_exchange(
+          configuracion.events_exchange,
+          aio_pika.ExchangeType.TOPIC,
+          durable=True,
+        )
+        queue = await channel.declare_queue(
+          configuracion.events_queue,
+          durable=True,
+        )
+        await queue.bind(exchange, routing_key="user.*")
+        await queue.bind(exchange, routing_key="conference.*")
 
-                async with queue.iterator() as queue_iter:
-                    async for message in queue_iter:
-                        async with message.process(requeue=True):
-                            raw = message.body.decode("utf-8", errors="replace")
-                            try:
-                                obj = json.loads(raw)
-                            except Exception:
-                                obj = {"type": "unknown", "payload": {"raw": raw}}
+        async with queue.iterator() as queue_iter:
+          async for message in queue_iter:
+            async with message.process(requeue=True):
+              raw = message.body.decode("utf-8", errors="replace")
+              try:
+                obj = json.loads(raw)
+              except Exception:
+                obj = {"type": "unknown", "payload": {"raw": raw}}
 
-                            event_type = str(obj.get("type") or "unknown")
-                            payload = obj.get("payload") or {}
-                            payload_json = json.dumps(payload, ensure_ascii=False)
+              event_type = str(obj.get("type") or "unknown")
+              payload = obj.get("payload") or {}
+              payload_json = json.dumps(payload, ensure_ascii=False)
 
-                            await insert_event(
-                                event_type=event_type,
-                                payload_json=payload_json,
-                                processed_at=datetime.utcnow().isoformat(),
-                            )
+              await insert_event(
+                event_type=event_type,
+                payload_json=payload_json,
+                processed_at=datetime.utcnow().isoformat(),
+              )
 
-                            # FIX: ahora sí despacha al servicio de notificaciones
-                            await _procesar_evento(event_type, payload)
+              # FIX: ahora sí despacha al servicio de notificaciones
+              await _procesar_evento(event_type, payload)
 
-                            logger.info("evento_consumido tipo=%s", event_type)
-
-        except Exception as e:
-            logger.warning("consumer_reconnect motivo=%s", str(e))
-            await asyncio.sleep(2)
+              logger.info("evento_consumido tipo=%s", event_type)
+    except Exception as e:
+      logger.warning("consumer_reconnect motivo=%s", str(e))
+      await asyncio.sleep(2)
 
 
 @asynccontextmanager
@@ -142,6 +142,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
+# Inicializar aplicación FastAPI del servicio de notificaciones
 app = FastAPI(
     title="Servicio de Notificaciones",
     version="0.2.0",
@@ -149,15 +150,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Configuración CORS abierta (el gateway valida autenticación)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Gateway maneja restricciones de origen
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+# Endpoint de verificación del estado del servicio
 @app.get("/health")
 async def verificar_salud():
     return {"estado": "saludable", "servicio": "servicio-notificaciones", "version": "0.2.0"}

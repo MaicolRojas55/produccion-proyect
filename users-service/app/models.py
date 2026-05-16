@@ -9,8 +9,12 @@ RoleType = Literal["super_admin", "web_master", "usuario_registrado"]
 
 
 class MongoBaseModel(BaseModel):
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("id", mode="before", check_fields=False)
+    @classmethod
+    def normalize_id(cls, value):
+        return str(value) if value is not None else value
 
 
 class User(MongoBaseModel):
@@ -33,7 +37,7 @@ class User(MongoBaseModel):
         return str(v)
 
 
-class UserPublic(BaseModel):
+class UserPublic(MongoBaseModel):
     id: str | None = Field(None, alias="_id")
     full_name: str
     email: EmailStr
@@ -48,6 +52,25 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: RoleType = "usuario_registrado"
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("La contraseña debe tener al menos 8 caracteres")
+        if not any(c.isupper() for c in v):
+            raise ValueError("La contraseña debe contener al menos una letra mayúscula")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("La contraseña debe contener al menos un número")
+        return v
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("El nombre no puede estar vacío")
+        return v
 
 
 class UserLogin(BaseModel):
@@ -82,4 +105,3 @@ class UserRegisteredEvent(BaseModel):
     email: EmailStr
     full_name: str
     role: RoleType
-

@@ -75,10 +75,16 @@ type AuthContextValue = {
   ) => Promise<{ ok: true; user: User } | { ok: false; reason: string }>
   register: (
     input: RegisterInput
-  ) => Promise<{ ok: true; userId: string } | { ok: false; reason: string }>
+  ) => Promise<
+    | { ok: true; userId: string }
+    | { ok: false; reason: string }
+  >
   requestActivationOtp: (
     email: string
-  ) => Promise<{ ok: true } | { ok: false; reason: string }>
+  ) => Promise<
+    | { ok: true }
+    | { ok: false; reason: string }
+  >
   activateAccount: (input: {
     email: string
     otp: string
@@ -154,7 +160,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
       role = 'usuario_registrado'
     }: RegisterInput): Promise<
-      { ok: true; userId: string } | { ok: false; reason: string }
+      | { ok: true; userId: string }
+      | { ok: false; reason: string }
     > => {
       try {
         setError(null)
@@ -166,11 +173,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
 
         // No hacer login automáticamente, requiere verificación OTP
-        return { ok: true, userId: response.otp_id }
+        return {
+          ok: true,
+          userId: response.otp_id
+        }
       } catch (err) {
         const message =
           err instanceof ApiError ? err.message : 'Error en registro'
         setError(message)
+
+        if (
+          err instanceof ApiError &&
+          err.status === 400 &&
+          /email already registered/i.test(message)
+        ) {
+          return { ok: false, reason: 'EMAIL_TAKEN' }
+        }
+
         return { ok: false, reason: message }
       }
     },
@@ -180,7 +199,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const requestActivationOtp = useCallback(
     async (
       email: string
-    ): Promise<{ ok: true } | { ok: false; reason: string }> => {
+    ): Promise<
+      | { ok: true }
+      | { ok: false; reason: string }
+    > => {
       try {
         setError(null)
         await apiClient.resendOTP(email)

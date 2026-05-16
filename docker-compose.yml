@@ -32,9 +32,9 @@ services:
     environment:
       - MONGODB_URI=mongodb://users-mongo:27017
       - MONGODB_DB=users_db
-      - JWT_SECRET_KEY=super-secret-replace-this
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - JWT_ALGORITHM=HS256
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_URL=${RABBITMQ_URL}
       - EVENTS_EXCHANGE=coniiti.events
     depends_on:
       - users-mongo
@@ -47,9 +47,9 @@ services:
     environment:
       - MONGODB_URI=mongodb://conferences-mongo:27017
       - MONGODB_DB=conferences_db
-      - JWT_SECRET_KEY=super-secret-replace-this
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - JWT_ALGORITHM=HS256
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_URL=${RABBITMQ_URL}
       - EVENTS_EXCHANGE=coniiti.events
     depends_on:
       - conferences-mongo
@@ -59,12 +59,11 @@ services:
 
   backend:
     build: ./back-end
-    ports:
-      - "8000:8000"
+    # Puerto NO expuesto al host — solo accesible via gateway interno
     environment:
       - MONGODB_URI=mongodb://mongo:27017
       - MONGODB_DB=produccion_db
-      - JWT_SECRET_KEY=super-secret-replace-this
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
     depends_on:
       - mongo
     networks:
@@ -72,12 +71,11 @@ services:
 
   notification-service:
     build: ./notification-service
-    ports:
-      - "8002:8002"
+    # Puerto NO expuesto al host — solo accesible via gateway interno
     environment:
       - NOTIFICATION_PORT=8002
       - LOG_LEVEL=info
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_URL=${RABBITMQ_URL}
       - EVENTS_EXCHANGE=coniiti.events
       - EVENTS_QUEUE=notifications.q
       - SQLITE_PATH=/data/notifications.sqlite
@@ -90,9 +88,13 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    # Puerto 5672 y consola 15672 NO expuestos al host en producción
+    # Para debug local descomenta las líneas de ports:
+    # ports:
+    #   - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-coniiti_mq}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-changeme}
     networks:
       - coniiti-net
 
@@ -112,8 +114,7 @@ services:
 
   mongo:
     image: mongo:7
-    ports:
-      - "27017:27017"
+    # Puerto 27017 NO expuesto al host — solo accesible dentro de coniiti-net
     volumes:
       - mongo-data:/data/db
     networks:

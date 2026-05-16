@@ -12,6 +12,11 @@ class MongoBaseModel(BaseModel):
     class Config:
         populate_by_name = True
 
+    @field_validator("id", mode="before", check_fields=False)
+    @classmethod
+    def normalize_id(cls, value):
+        return str(value) if value is not None else value
+
 
 class Conference(MongoBaseModel):
     id: str | None = Field(None, alias="_id")

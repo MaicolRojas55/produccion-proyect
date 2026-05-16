@@ -12,7 +12,7 @@ Solución:
 """
 
 from datetime import datetime, timedelta
-import random
+import secrets
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -37,7 +37,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def generate_otp_code(length: int = 6) -> str:
-    return "".join(str(random.randint(0, 9)) for _ in range(length))
+    return "".join(str(secrets.randbelow(10)) for _ in range(length))
 
 
 @router.post("/register", response_model=dict)
@@ -142,6 +142,8 @@ async def resend_otp(email: EmailStr):
     )
 
     result = await otps_collection.insert_one(otp_doc)
+    logger.info("OTP reenviado para %s (solo visible en logs del servidor)", email)
+
     logger.info("OTP reenviado para %s (solo visible en logs del servidor)", email)
 
     # Publicar evento para reenvío de OTP
