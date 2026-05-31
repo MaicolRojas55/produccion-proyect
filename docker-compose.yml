@@ -7,6 +7,7 @@ services:
     environment:
       # El navegador llama solo a :5173; Vite reenvía /api al gateway (evita CORS y :8080 caído en el cliente).
       - VITE_API_URL=/api
+      - VITE_DEV_OTP_MAILBOX=true
       - API_PROXY_TARGET=http://gateway:80
     depends_on:
       - gateway
@@ -75,6 +76,8 @@ services:
     environment:
       - NOTIFICATION_PORT=8002
       - LOG_LEVEL=info
+      - NOTIFICATION_MODE=simulado
+      - DEV_MAILBOX_ENABLED=true
       - RABBITMQ_URL=${RABBITMQ_URL}
       - EVENTS_EXCHANGE=coniiti.events
       - EVENTS_QUEUE=notifications.q
@@ -83,6 +86,16 @@ services:
       - notifications-data:/data
     depends_on:
       - rabbitmq
+    networks:
+      - coniiti-net
+
+  # Captura correos SMTP en desarrollo (UI: http://localhost:8025). Gratis y open source (MIT).
+  # Para usarlo: NOTIFICATION_MODE=smtp, SMTP_SERVER=mailpit, SMTP_PORT=1025 en notification-service.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+      - "1025:1025"
     networks:
       - coniiti-net
 

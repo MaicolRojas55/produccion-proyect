@@ -25,3 +25,11 @@ class RespuestaNotificacion(BaseModel):
     asunto: str
     modo_envio: str
     detalle: str
+
+
+class DevMailboxEntry(BaseModel):
+    email: EmailStr
+    otp_code: str
+    subject: str
+    created_at: str
+    expires_at: str | None = None

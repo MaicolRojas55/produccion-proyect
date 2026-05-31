@@ -1,6 +1,11 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+
+from .structured_logging import setup_structured_logging
+
+setup_structured_logging("conferences-service", os.getenv("LOG_LEVEL", "INFO"))
 from fastapi.middleware.cors import CORSMiddleware
 
 from .agenda_seed import ensure_agenda_conferences

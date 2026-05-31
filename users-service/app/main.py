@@ -1,7 +1,12 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .structured_logging import setup_structured_logging
 from .routes_auth import router as auth_router
+
+setup_structured_logging("users-service", os.getenv("LOG_LEVEL", "INFO"))
 from .routes_users import router as users_router
 
 

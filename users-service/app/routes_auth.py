@@ -144,8 +144,6 @@ async def resend_otp(email: EmailStr):
     result = await otps_collection.insert_one(otp_doc)
     logger.info("OTP reenviado para %s (solo visible en logs del servidor)", email)
 
-    logger.info("OTP reenviado para %s (solo visible en logs del servidor)", email)
-
     # Publicar evento para reenvío de OTP
     await publish_event(
         "user.otp_resent",

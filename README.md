@@ -75,6 +75,9 @@ npm run dev
 - Interfaz web: [http://localhost:5173](http://localhost:5173)
 - API: [http://localhost:8000](http://localhost:8000)
 - Documentación interactiva: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Panel de uptime: [http://localhost:5173/system-health](http://localhost:5173/system-health)
+- Documento final del entregable: [docs/ENTREGABLE_FINAL.md](docs/ENTREGABLE_FINAL.md)
+- Gitflow del equipo: [docs/GITFLOW.md](docs/GITFLOW.md)
 
 ## Docker Compose (arquitectura requerida)
 
@@ -118,6 +121,40 @@ El front en Compose usa `VITE_API_URL=/api` y el **proxy de Vite** (`API_PROXY_T
 - Consumidor:
   - `notification-service` consume `user.*` y `conference.*` desde cola durable `notifications.q`.
   - Cada evento procesado se guarda en SQLite (`/data/notifications.sqlite`), base propia del servicio.
+
+### OTP en desarrollo (bandeja simulada)
+
+Con `NOTIFICATION_MODE=simulado` (valor por defecto en Compose), no se envían correos reales. El código OTP queda disponible sin revisar logs:
+
+| Dónde | URL / variable |
+|-------|----------------|
+| Pantalla de registro | Tras crear la cuenta, banner amarillo con el código |
+| Bandeja global | [http://localhost:5173/dev/mailbox](http://localhost:5173/dev/mailbox) |
+| API | `GET /api/notifications/dev/mailbox/latest?email=...` |
+
+Variables: `DEV_MAILBOX_ENABLED=true` (notification-service), `VITE_DEV_OTP_MAILBOX=true` (frontend). En producción usa `NOTIFICATION_MODE=smtp` con credenciales SMTP (Gmail App Password, Resend, etc.) y desactiva ambas variables.
+
+### Mailpit (correo real en local, gratis)
+
+[Mailpit](https://mailpit.axllent.org/) es **gratuito** (licencia MIT): un servidor SMTP de prueba con bandeja web. No envía correos a internet; los captura para que los veas en el navegador.
+
+| | Bandeja dev (actual) | Mailpit |
+|--|----------------------|---------|
+| Costo | Gratis | Gratis |
+| Dónde ver el OTP | Banner en `/auth` o `/dev/mailbox` | [http://localhost:8025](http://localhost:8025) |
+| Flujo | Código en pantalla sin email | Email HTML como en producción |
+| Config | `NOTIFICATION_MODE=simulado` | `NOTIFICATION_MODE=smtp` + host `mailpit:1025` |
+
+Con Compose ya incluye el servicio `mailpit`. Para usarlo, en `notification-service` (o variables de `docker-compose`):
+
+```env
+NOTIFICATION_MODE=smtp
+SMTP_SERVER=mailpit
+SMTP_PORT=1025
+DEV_MAILBOX_ENABLED=false
+```
+
+Abre [http://localhost:8025](http://localhost:8025), regístrate en la app y el OTP aparecerá como un correo entrante.
 
 ## Pruebas end-to-end y de resiliencia
 

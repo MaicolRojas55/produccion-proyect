@@ -16,6 +16,11 @@ import { useFormValidation } from '@/hooks/useFormValidation'
 import { ValidatedInput } from '@/components/ui/validated-input'
 import { useAuth } from '@/features/auth/useAuth'
 import { toast } from 'sonner'
+import { DevOtpBanner } from '@/components/shared/DevOtpBanner'
+import {
+  fetchDevOtpWithRetry,
+  isDevOtpMailboxEnabled
+} from '@/features/otp/devMailbox'
 
 function useQueryTab() {
   const location = useLocation()
@@ -60,8 +65,22 @@ export default function Auth() {
   const [isResendingOTP, setIsResendingOTP] = useState(false)
   const [registerInfo, setRegisterInfo] = useState<string | null>(null)
   const [otpError, setOtpError] = useState<string | null>(null)
+  const [devOtpCode, setDevOtpCode] = useState<string | null>(null)
+  const [devOtpLoading, setDevOtpLoading] = useState(false)
 
   const { login, register, requestActivationOtp, activateAccount } = useAuth()
+
+  const loadDevOtp = async (targetEmail: string) => {
+    if (!isDevOtpMailboxEnabled) return
+    setDevOtpLoading(true)
+    setDevOtpCode(null)
+    try {
+      const code = await fetchDevOtpWithRetry(targetEmail)
+      setDevOtpCode(code)
+    } finally {
+      setDevOtpLoading(false)
+    }
+  }
 
   const goAfterAuth = (isStaff: boolean) => {
     const from =
@@ -114,8 +133,11 @@ export default function Auth() {
         })
         setTab('register')
         setRegisterInfo(
-          'Cuenta creada. Revisa tu correo (o los logs del servidor en desarrollo) e ingresa el código OTP.'
+          isDevOtpMailboxEnabled
+            ? 'Cuenta creada. Usa el código OTP que aparece abajo (modo desarrollo).'
+            : 'Cuenta creada. Revisa tu correo e ingresa el código OTP.'
         )
+        void loadDevOtp(email.trim().toLowerCase())
         toast.success('Cuenta creada. Ingresa el OTP para activar.')
       }
     } finally {
@@ -138,14 +160,15 @@ export default function Auth() {
     try {
       const result = await activateAccount({
         email: pendingActivation.email,
-        otp: otp.trim()
+        otp: otp.trim(),
+        password
       })
 
       if (!result.ok) {
         setOtpError('Código OTP inválido o expirado')
       } else {
-        toast.success('Cuenta verificada exitosamente')
-        goAfterAuth(false)
+        toast.success('Cuenta verificada. Bienvenido.')
+        goAfterAuth(result.user.role !== 'usuario_registrado')
       }
     } finally {
       setIsLoading(false)
@@ -162,6 +185,7 @@ export default function Auth() {
         toast.error('Error al generar el código OTP.')
       } else {
         toast.success('Código OTP reenviado correctamente')
+        void loadDevOtp(pendingActivation.email)
       }
     } finally {
       setIsResendingOTP(false)
@@ -346,10 +370,26 @@ export default function Auth() {
                       Verifica tu email
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Enviamos un código de 6 dígitos a{' '}
-                      <strong>{pendingActivation.email}</strong>
+                      {isDevOtpMailboxEnabled ? (
+                        <>
+                          Código de verificación para{' '}
+                          <strong>{pendingActivation.email}</strong> (correo
+                          simulado)
+                        </>
+                      ) : (
+                        <>
+                          Enviamos un código de 6 dígitos a{' '}
+                          <strong>{pendingActivation.email}</strong>
+                        </>
+                      )}
                     </p>
                   </div>
+
+                  <DevOtpBanner
+                    email={pendingActivation.email}
+                    otpCode={devOtpCode}
+                    loading={devOtpLoading}
+                  />
 
                   <ValidatedInput
                     id="otp"

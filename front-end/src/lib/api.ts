@@ -98,6 +98,14 @@ export interface ResendOTPResponse {
   otp_id: string
 }
 
+export interface DevMailboxEntry {
+  email: string
+  otp_code: string
+  subject: string
+  created_at: string
+  expires_at?: string | null
+}
+
 export interface User {
   id?: string
   _id?: string
@@ -388,6 +396,20 @@ class ApiClient {
     return this.request<ResendOTPResponse>(`/auth/resend-otp?${queryString}`, {
       method: 'POST'
     })
+  }
+
+  async getDevMailboxLatest(email: string): Promise<DevMailboxEntry> {
+    const queryString = new URLSearchParams({ email }).toString()
+    return this.request<DevMailboxEntry>(
+      `/notifications/dev/mailbox/latest?${queryString}`
+    )
+  }
+
+  async getDevMailboxRecent(limit = 20): Promise<DevMailboxEntry[]> {
+    const queryString = new URLSearchParams({ limit: String(limit) }).toString()
+    return this.request<DevMailboxEntry[]>(
+      `/notifications/dev/mailbox/recent?${queryString}`
+    )
   }
 
   async getCurrentUser(): Promise<User> {

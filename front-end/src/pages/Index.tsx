@@ -768,6 +768,12 @@ const Index = () => {
               <Link to="/#memorias" className="hover:text-primary-foreground">
                 Memorias
               </Link>
+              <Link
+                to="/system-health"
+                className="hover:text-primary-foreground"
+              >
+                Estado del sistema
+              </Link>
               <Link to="/#acerca" className="hover:text-primary-foreground">
                 Acerca de
               </Link>

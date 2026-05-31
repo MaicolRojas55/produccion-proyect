@@ -2,9 +2,17 @@ from pydantic_settings import BaseSettings
 import os
 
 
+def _resolve_dev_mailbox_enabled(modo_envio: str) -> bool:
+    explicit = os.getenv("DEV_MAILBOX_ENABLED")
+    if explicit is not None and explicit.strip() != "":
+        return explicit.lower() in ("1", "true", "yes")
+    return modo_envio.lower() == "simulado"
+
+
 # Configuraciones del Servicio de Notificaciones
 class ConfiguracionNotificaciones(BaseSettings):
     """Cargar variables de entorno para el servicio de notificaciones"""
+
     # Puerto donde escucha el servicio
     puerto_notificaciones: int = int(os.getenv("NOTIFICATION_PORT", "8002"))
     # Nivel de logging (info, debug, error)
@@ -32,6 +40,11 @@ class ConfiguracionNotificaciones(BaseSettings):
 
     # DB propia del servicio (SQLite en volumen)
     sqlite_path: str = os.getenv("SQLITE_PATH", "/data/notifications.sqlite")
+
+    @property
+    def dev_mailbox_enabled(self) -> bool:
+        """Bandeja dev: guarda OTP y expone API /dev/mailbox (solo desarrollo)."""
+        return _resolve_dev_mailbox_enabled(self.modo_envio)
 
     class Config:
         env_file = ".env"

@@ -1,7 +1,12 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .routes import auth, users, sessions, speakers, calendar, conferences, student_agenda, agenda_inscriptions, attendance, stats
+from .structured_logging import setup_structured_logging
+
+setup_structured_logging("backend-legacy", os.getenv("LOG_LEVEL", "INFO"))
 
 app = FastAPI(title="Producción Conference API", version="0.1.0")
 
@@ -35,6 +40,11 @@ app.include_router(student_agenda.router)
 app.include_router(agenda_inscriptions.router)
 app.include_router(attendance.router)
 app.include_router(stats.router)
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "backend-legacy"}
 
 
 @app.get("/")
