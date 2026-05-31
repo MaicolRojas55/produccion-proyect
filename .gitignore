@@ -23,5 +23,10 @@
 /back-end/*.pyc
 /back-end/.env
 
+# Tests / Python cache
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+
 # OS
 Thumbs.db

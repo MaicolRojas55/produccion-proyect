@@ -1,11 +1,8 @@
-import os
 from pathlib import Path
 
 import pytest
 
-os.environ["SQLITE_PATH"] = str(Path(__file__).parent / "test_mailbox.sqlite")
-
-from app.dev_mailbox import (  # noqa: E402
+from app.dev_mailbox import (
     get_latest_dev_mail,
     init_dev_mailbox_db,
     save_dev_mail,
@@ -14,6 +11,8 @@ from app.dev_mailbox import (  # noqa: E402
 
 @pytest.fixture(autouse=True)
 async def fresh_mailbox_db():
+    import os
+
     db_path = Path(os.environ["SQLITE_PATH"])
     if db_path.exists():
         db_path.unlink()

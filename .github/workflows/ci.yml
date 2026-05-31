@@ -41,17 +41,29 @@ jobs:
           - service: users-service
           - service: notification-service
           - service: conferences-service
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    env:
+      PYTHONPATH: .
+      JWT_SECRET_KEY: test-jwt-secret-key-minimum-32-characters-for-ci
+      MONGODB_URI: mongodb://127.0.0.1:27017
+      MONGODB_DB: test_db
+      RABBITMQ_URL: amqp://guest:guest@127.0.0.1:5672/
+      LOG_LEVEL: INFO
+      NOTIFICATION_MODE: simulado
+      SQLITE_PATH: /tmp/notifications-test.sqlite
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar dependencias y ejecutar pytest
+      - name: Instalar dependencias
         run: |
-          cd ${{ matrix.service }}
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
-          pytest -q
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+      - name: Ejecutar pytest
+        run: python -m pytest -q --tb=short
 
   test-frontend:
     name: Tests frontend
