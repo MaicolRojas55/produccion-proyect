@@ -61,9 +61,26 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
     except JWTError:
         raise credentials_exception
     user = await get_user_by_email(token_data.email)
-    if user is None:
-        raise credentials_exception
-    return user
+    if user is not None:
+        return user
+
+    # Con microservicios el login emite JWT desde users-service; el usuario
+    # puede no existir en produccion_db. Aceptar claims válidos del token.
+    if (
+        token_data.email
+        and token_data.role in ("super_admin", "web_master", "usuario_registrado")
+    ):
+        return User(
+            id=token_data.user_id,
+            email=token_data.email,
+            full_name=str(token_data.email).split("@")[0],
+            hashed_password="",
+            role=token_data.role,
+            is_active=True,
+            is_verified=True,
+        )
+
+    raise credentials_exception
 
 
 async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]) -> User:

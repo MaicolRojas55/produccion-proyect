@@ -220,15 +220,27 @@ Resumen:
 3. Cada microservicio tiene su `.env.example` si lo ejecutas fuera de Compose.
 4. **Nunca** commitear archivos `.env` (están en `.gitignore`).
 
-## Usuarios por defecto (`init_db.py`)
+## Usuarios de prueba (login en `/auth`)
 
-Tras ejecutar `python init_db.py` contra la misma base configurada en el backend:
+Al levantar **Docker Compose**, `users-service` crea automáticamente estas cuentas en `users_db` (ya verificadas, sin OTP):
 
-| Email | Contraseña | Rol |
-|-------|------------|-----|
-| super_admin@example.com | SuperAdmin123! | Super Admin |
-| web_master@example.com | WebMaster123! | Web Master |
-| user@example.com | Usuario123! | Usuario registrado |
+| Email | Contraseña | Rol | Destino tras login |
+|-------|------------|-----|-------------------|
+| `super_admin@example.com` | `SuperAdmin123!` | Super Admin | `/dashboard` |
+| `web_master@example.com` | `WebMaster123!` | Web Master | `/dashboard` |
+| `user@example.com` | `Usuario123!` | Usuario registrado | `/student` |
+
+Manual (desarrollo local sin entrypoint):
+
+```bash
+cd users-service
+pip install -r requirements.txt
+python init_db.py
+```
+
+Desactivar seed en producción: `SEED_DEFAULT_USERS=false` en `users-service`.
+
+El script `back-end/init_db.py` sigue poblando la base **legacy** (`produccion_db`); es independiente del login del gateway.
 
 ## CI y pruebas
 

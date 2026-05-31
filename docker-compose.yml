@@ -37,9 +37,12 @@ services:
       - JWT_ALGORITHM=HS256
       - RABBITMQ_URL=${RABBITMQ_URL}
       - EVENTS_EXCHANGE=coniiti.events
+      - SEED_DEFAULT_USERS=true
     depends_on:
-      - users-mongo
-      - rabbitmq
+      users-mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
     networks:
       - coniiti-net
 
@@ -115,6 +118,12 @@ services:
     image: mongo:7
     volumes:
       - users-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     networks:
       - coniiti-net
 
