@@ -76,6 +76,7 @@ cp .env.example .env
 | `RABBITMQ_URL` | — | Broker | desde `.env` raíz |
 | `EVENTS_EXCHANGE` | — | Exchange topic | `coniiti.events` |
 | `LOG_LEVEL` | — | Logs JSON | `INFO` |
+| `SEED_DEFAULT_USERS` | — | Crea usuarios de prueba al arrancar (`init_db.py`) | `true` en Compose; `false` en producción |
 
 ---
 

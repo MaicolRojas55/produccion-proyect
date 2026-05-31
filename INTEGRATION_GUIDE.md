@@ -136,6 +136,16 @@ La integración del front usa las rutas documentadas en el README y en `api.ts`,
 | 404 en `/api/auth/...` | URL sin prefijo `/api` | `VITE_API_URL=/api` |
 | Registro OK pero sin email | notification-service caído | `docker compose logs notification-service` |
 
+## Usuarios de prueba (staff y estudiante)
+
+Tras `docker compose up`, puedes iniciar sesión en http://localhost:5173/auth sin registrarte:
+
+| Email | Contraseña | Rol |
+|-------|------------|-----|
+| `super_admin@example.com` | `SuperAdmin123!` | Super Admin |
+| `web_master@example.com` | `WebMaster123!` | Web Master |
+| `user@example.com` | `Usuario123!` | Usuario registrado |
+
 ## Checklist
 
 - [ ] `.env` raíz con `JWT_SECRET_KEY` seguro

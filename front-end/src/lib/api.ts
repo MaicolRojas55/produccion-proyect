@@ -325,8 +325,8 @@ class ApiClient {
             .join('. ')
         }
 
-        // BUG 2 FIX: en 401 limpiar sesión y redirigir al login
-        if (response.status === 401) {
+        // Solo redirigir en 401 cuando la petición requería sesión
+        if (response.status === 401 && requiresAuth) {
           this.redirectToLogin()
         }
 
@@ -358,7 +358,7 @@ class ApiClient {
   private redirectToLogin(): void {
     this.clearToken()
     if (typeof window !== 'undefined') {
-      window.location.href = '/login'
+      window.location.href = '/auth'
     }
   }
 

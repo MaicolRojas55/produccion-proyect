@@ -18,7 +18,7 @@ API REST desarrollada con FastAPI para la plataforma de conferencias CONIITI. Si
 ## ✨ Características
 
 - 🔐 **Autenticación JWT** con roles (super_admin, web_master, usuario_registrado)
-- 📧 **Verificación OTP** simulada en terminal (migración a microservicio en progreso)
+- 📧 **Verificación OTP** — en producción usar `users-service` + `notification-service` (este monolito queda en modo legacy)
 - 📅 **Gestión de Conferencias** - CRUD completo
 - 👥 **Gestión de Conferencistas** - Información de speakers
 - 🗓️ **Calendario de Eventos** - Eventos con control de audiencia

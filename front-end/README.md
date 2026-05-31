@@ -46,8 +46,8 @@ Interfaz de usuario moderna para la plataforma de conferencias CONIITI, construi
 
 - **Node.js** 18+ o **Bun** 1.0+
 - **npm** o **bun** (gestor de paquetes)
-- Backend corriendo en `http://localhost:8000`
-- MongoDB disponible para el backend
+- Stack de microservicios + gateway (recomendado: `docker compose up` en la raíz del monorepo)
+- Ver [docs/VARIABLES_ENTORNO.md](../docs/VARIABLES_ENTORNO.md) para configuración
 
 ## 📦 Instalación
 
@@ -69,16 +69,20 @@ bun install
 
 ### 3. Crear archivo .env
 
-Crear archivo `.env` en el directorio `front-end/`:
+```bash
+cp .env.example .env
+```
+
+Con Docker Compose + gateway (recomendado):
 
 ```env
-# API Backend
-VITE_API_URL=http://localhost:8000
-
-# Entorno
+VITE_API_URL=/api
+API_PROXY_TARGET=http://127.0.0.1:8080
+VITE_DEV_OTP_MAILBOX=true
 VITE_ENVIRONMENT=development
-VITE_API_TIMEOUT=30000
 ```
+
+Solo monolito legacy en `:8000`: `VITE_API_URL=http://localhost:8000`
 
 ### 4. Iniciar servidor de desarrollo
 

@@ -2,7 +2,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { ErrorBoundary } from '@/ErrorBoundary'
 import Index from './pages/Index'
 import NotFound from './pages/NotFound'
@@ -26,6 +26,7 @@ const router = createBrowserRouter(
   [
     { path: '/', element: <Index /> },
     { path: '/auth', element: <Auth /> },
+    { path: '/login', element: <Navigate to="/auth" replace /> },
     { path: '/dev/mailbox', element: <DevMailbox /> },
     { path: '/system-health', element: <SystemHealth /> },
     { path: '/agenda', element: <Agenda /> },
