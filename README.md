@@ -11,16 +11,17 @@ Monorepo para la plataforma de conferencias CONIITI: frontend React, gateway Ngi
 
 ## Arquitectura del monorepo
 
+Documentación detallada: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) · Variables de entorno: [docs/VARIABLES_ENTORNO.md](docs/VARIABLES_ENTORNO.md)
+
 | Componente | Rol |
 |------------|-----|
-| `back-end/` | API principal FastAPI, MongoDB (Motor), JWT, rutas de dominio. |
 | `front-end/` | SPA React + Vite; cliente HTTP en `src/lib/api.ts`. |
-| `nginx.conf` + servicio `gateway` en Compose | Punto único de entrada (`http://localhost:8080/api`) y ruteo por dominio a servicios internos. |
-| `users-service/` | Microservicio de usuarios/autenticación. Base propia MongoDB y publicación de eventos (`user.registered`). |
-| `conferences-service/` | Microservicio de conferencias/agenda de estudiante. Base propia MongoDB y eventos (`conference.created`). |
-| `notification-service/` | Consume eventos de RabbitMQ en segundo plano y registra eventos procesados en su DB propia (SQLite). |
-| `back-end/` | Servicio legacy para rutas aún no migradas (fallback del gateway). |
-| `docker-compose.yml` | Orquesta frontend + gateway + microservicios + RabbitMQ + bases separadas por servicio. |
+| `nginx.conf` + servicio `gateway` en Compose | Punto único de entrada (`http://localhost:8080/api`) y ruteo por dominio. |
+| `users-service/` | Autenticación, usuarios, OTP. MongoDB propia; publica `user.registered` en RabbitMQ. |
+| `conferences-service/` | Conferencias y agenda de estudiante. MongoDB propia; eventos `conference.created`. |
+| `notification-service/` | Correos OTP y consumidor de eventos. SQLite + RabbitMQ. |
+| `back-end/` | API legacy (fallback del gateway para rutas no migradas). |
+| `docker-compose.yml` | Orquesta frontend, gateway, microservicios, RabbitMQ, Mailpit y bases por servicio. |
 
 ## Requisitos
 
@@ -36,52 +37,50 @@ Monorepo para la plataforma de conferencias CONIITI: frontend React, gateway Ngi
 
 La configuración SMTP para Gmail u otro proveedor es **opcional** mientras el OTP o el correo estén en modo simulado o de desarrollo.
 
-## Inicio rápido (desarrollo local)
+## Inicio rápido (recomendado: Docker Compose)
 
-### 1. Clonar el repositorio
+### 1. Clonar y configurar secretos
 
 ```bash
 git clone <url-del-repositorio>
 cd produccion-proyect
-```
-
-### 2. Backend
-
-```bash
-cd back-end
-python -m venv venv
-# Windows: venv\Scripts\activate
-# Linux/macOS: source venv/bin/activate
-pip install -r requirements.txt
 cp .env.example .env
-# Editar .env si hace falta (MongoDB, JWT, SMTP)
-python init_db.py
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Editar .env: JWT_SECRET_KEY (≥32 caracteres) y RABBITMQ_URL
 ```
 
-### 3. Frontend
+### 2. Levantar el stack
 
 ```bash
-cd ../front-end
+docker compose up --build
+```
+
+### 3. Frontend local (opcional, sin contenedor)
+
+```bash
+cd front-end
 npm install
 cp .env.example .env
-# Con microservicios + gateway en el host (puerto 8080): VITE_API_URL=/api y API_PROXY_TARGET=http://127.0.0.1:8080
-# Solo backend monolito en :8000: VITE_API_URL=http://localhost:8000
+# VITE_API_URL=/api y API_PROXY_TARGET=http://127.0.0.1:8080
 npm run dev
 ```
 
 ### 4. URLs habituales
 
-- Interfaz web: [http://localhost:5173](http://localhost:5173)
-- API: [http://localhost:8000](http://localhost:8000)
-- Documentación interactiva: [http://localhost:8000/docs](http://localhost:8000/docs)
-- Panel de uptime: [http://localhost:5173/system-health](http://localhost:5173/system-health)
-- Documento final del entregable: [docs/ENTREGABLE_FINAL.md](docs/ENTREGABLE_FINAL.md)
-- Gitflow del equipo: [docs/GITFLOW.md](docs/GITFLOW.md)
+| Recurso | URL |
+|---------|-----|
+| Interfaz web | [http://localhost:5173](http://localhost:5173) |
+| API (gateway) | [http://localhost:8080/api](http://localhost:8080/api) |
+| Panel de uptime | [http://localhost:5173/system-health](http://localhost:5173/system-health) |
+| Bandeja OTP (dev) | [http://localhost:5173/dev/mailbox](http://localhost:5173/dev/mailbox) |
+| Mailpit (opcional) | [http://localhost:8025](http://localhost:8025) |
+
+### Desarrollo solo monolito (legacy)
+
+Si trabajas únicamente con `back-end/` sin microservicios, ver [back-end/README.md](back-end/README.md) y usa `VITE_API_URL=http://localhost:8000` en el frontend.
 
 ## Docker Compose (arquitectura requerida)
 
-Desde la raíz del monorepo:
+Requisito previo: archivo `.env` en la raíz (copiar desde `.env.example`).
 
 ```bash
 docker compose up --build
@@ -98,10 +97,10 @@ docker compose exec backend python init_db.py
 | Servicio | URL |
 |----------|-----|
 | Frontend | [http://localhost:5173](http://localhost:5173) |
-| API única vía Gateway Nginx | [http://localhost:8080/api](http://localhost:8080/api) |
-| RabbitMQ UI | [http://localhost:15672](http://localhost:15672) (`guest/guest`) |
-| Backend legacy (fallback) | [http://localhost:8000/docs](http://localhost:8000/docs) |
-| Notificaciones | [http://localhost:8002/health](http://localhost:8002/health) |
+| API vía Gateway | [http://localhost:8080/api](http://localhost:8080/api) |
+| Health agregado | [http://localhost:8080/api/health/users](http://localhost:8080/api/health/users) (y `/conferences`, `/notifications`, `/backend`) |
+| Mailpit | [http://localhost:8025](http://localhost:8025) |
+| RabbitMQ UI | Solo si expones puerto `15672` en `docker-compose.yml` |
 
 El front en Compose usa `VITE_API_URL=/api` y el **proxy de Vite** (`API_PROXY_TARGET=http://gateway:80`) para que el navegador solo hable con `:5173`; las peticiones a `/api/*` las reenvía el dev server al gateway.
 
@@ -169,9 +168,10 @@ docker compose up --build
 2. Verificar salud:
 
 ```bash
-curl http://localhost:8080/api/auth/me
-curl http://localhost:8002/health
-curl http://localhost:8002/metrics
+curl http://localhost:8080/api/health/users
+curl http://localhost:8080/api/health/conferences
+curl http://localhost:8080/api/notifications/health
+curl http://localhost:8080/api/notifications/metrics
 ```
 
 3. Registrar usuario (publica evento `user.registered`):
@@ -209,19 +209,16 @@ docker compose logs notification-service
 
 Si `processed_events_total` crece y los logs muestran `evento_consumido`, la resiliencia asíncrona está comprobada.
 
-## Variables de entorno (referencia)
+## Variables de entorno
 
-**Backend** (`back-end/.env` — ver `back-end/.env.example`)
+Guía completa (tablas por servicio, OTP, Mailpit, checklist): **[docs/VARIABLES_ENTORNO.md](docs/VARIABLES_ENTORNO.md)**
 
-- `MONGODB_URI` / `MONGODB_URL` — conexión a MongoDB.
-- `MONGODB_DB` — nombre de la base de datos.
-- `JWT_SECRET_KEY` / `JWT_SECRET` — secreto compartido con el API Gateway si lo usas.
+Resumen:
 
-**Frontend** (`front-end/.env`)
-
-- `VITE_API_URL` — base de la API: `http://localhost:8000` si llamas directo a uvicorn; **`/api`** con Vite + proxy (recomendado con Compose: mismo origen `:5173` y `API_PROXY_TARGET` hacia el gateway).
-
-**API Gateway** y **notification-service**: ejemplos en `api-gateway/.env.example` y `notification-service/.env.example`.
+1. Raíz: `cp .env.example .env` → `JWT_SECRET_KEY`, `RABBITMQ_URL`.
+2. Frontend: `cp front-end/.env.example front-end/.env` → `VITE_API_URL=/api`.
+3. Cada microservicio tiene su `.env.example` si lo ejecutas fuera de Compose.
+4. **Nunca** commitear archivos `.env` (están en `.gitignore`).
 
 ## Usuarios por defecto (`init_db.py`)
 
@@ -235,9 +232,11 @@ Tras ejecutar `python init_db.py` contra la misma base configurada en el backend
 
 ## CI y pruebas
 
-- **GitHub Actions** (`.github/workflows/ci.yml`): ESLint, tests Vitest y build del front; comprobación ligera del backend (`compileall`).
-- **Frontend:** `cd front-end && npm run test`
-- En el backend no hay suite de pytest versionada; las pruebas automatizadas del API pueden añadirse en `back-end/` cuando se defina la estrategia.
+- **GitHub Actions** (`.github/workflows/ci.yml`): ESLint, Vitest, **pytest** en `users-service`, `notification-service` y `conferences-service`, build del frontend.
+- **CD:** `deploy-staging.yml` (rama `develop`) y `deploy-production.yml` (rama `main`) tras CI verde.
+- **Local:**
+  - Frontend: `cd front-end && npm run test`
+  - Backend: `cd users-service && pip install -r requirements.txt -r requirements-dev.txt && python -m pytest`
 
 ## Estructura del proyecto
 
@@ -456,16 +455,20 @@ produccion-proyect/
 
 ## Documentación adicional
 
-- [Backend — detalle de API y modelos](./back-end/README.md)
-- [Frontend](./front-end/README.md)
-- [Guía de integración](./INTEGRATION_GUIDE.md) (si aplica a tu flujo de despliegue)
+| Documento | Contenido |
+|-----------|-----------|
+| [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Diagramas, microservicios, flujos OTP, enrutamiento |
+| [docs/VARIABLES_ENTORNO.md](docs/VARIABLES_ENTORNO.md) | Cómo crear y usar `.env` por componente |
+| [docs/ENTREGABLE_FINAL.md](docs/ENTREGABLE_FINAL.md) | Matriz del entregable, migración, sustentación |
+| [docs/GITFLOW.md](docs/GITFLOW.md) | Ramas, PRs y despliegues |
+| [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) | Integración frontend ↔ API (Compose) |
+| [k8s/README.md](k8s/README.md) | Despliegue en Kubernetes |
+| [back-end/README.md](back-end/README.md) | API monolito legacy |
+| [front-end/README.md](front-end/README.md) | Detalle del cliente React |
 
 ## Contribución
 
-1. Fork del repositorio.
-2. Rama de trabajo: `git checkout -b feature/nombre-descriptivo`.
-3. Commits con mensajes claros.
-4. Push y apertura de un Pull Request hacia la rama acordada por el equipo.
+Ver [docs/GITFLOW.md](docs/GITFLOW.md): ramas `feature/*` → PR a `develop` → PR a `main`.
 
 ## Licencia
 
