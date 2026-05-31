@@ -1,485 +1,153 @@
-# 🔌 Guía Rápida de Integración Frontend-Backend
+# Guía de integración Frontend ↔ Backend (microservicios)
 
-Guía para conectar completamente el frontend con los endpoints del backend.
+Conecta el frontend React con la API expuesta por el **gateway Nginx** (`/api`). Para arquitectura y variables de entorno ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/VARIABLES_ENTORNO.md](docs/VARIABLES_ENTORNO.md).
 
-## 📋 Tabla de Contenidos
+## Pre-requisitos
 
-- [Pre-requisitos](#pre-requisitos)
-- [Verificar Conexión](#verificar-conexión)
-- [Configurar Variables](#configurar-variables)
-- [Testear Endpoints](#testear-endpoints)
-- [Flujos Principales](#flujos-principales)
-- [Troubleshooting](#troubleshooting)
-
-## ⚙️ Pre-requisitos
-
-### Backend
+1. Docker Compose en ejecución **o** microservicios + gateway levantados manualmente.
+2. Archivo `.env` en la raíz del monorepo (`cp .env.example .env`).
+3. `front-end/.env` con `VITE_API_URL=/api`.
 
 ```bash
-cd back-end
+# Stack completo
+docker compose up --build
 
-# Crear venv
-python -m venv venv
-venv\Scripts\activate  # Windows
-
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Crear .env (ya está creado pero verificar)
-# Debe contener MONGODB_URI=mongodb://localhost:27017
-
-# MongoDB debe estar corriendo
-mongosh
-```
-
-### Frontend
-
-```bash
-cd front-end
-
-# Instalar dependencias
-npm install
-# o
-bun install
-
-# Crear .env
-# VITE_API_URL=http://localhost:8000
-```
-
-## 🚀 Verificar Conexión
-
-### 1. Iniciar Backend
-
-```bash
-cd back-end
-uvicorn app.main:app --reload
-```
-
-Debe mostrar:
-
-```
-INFO:     Uvicorn running on http://127.0.0.1:8000
-```
-
-Verificar endpoints en: `http://localhost:8000/docs`
-
-### 2. Iniciar Frontend
-
-```bash
-cd front-end
+# Frontend en el host (proxy al gateway)
+cd front-end && npm install && cp .env.example .env
+# Añadir en .env: API_PROXY_TARGET=http://127.0.0.1:8080
 npm run dev
 ```
 
-Debe mostrar:
+## Verificar conexión
 
-```
-  VITE v5.x.x  ready in xxx ms
-
-  ➜  Local:   http://localhost:5173/
-  ➜  press h to show help
+```bash
+curl http://localhost:8080/api/health/users
+curl http://localhost:8080/api/health/conferences
 ```
 
-### 3. Verificar Conexión
-
-En browser console:
+En el navegador (consola, con la app en `:5173`):
 
 ```javascript
-// Si está disponible, debe retornar lista de conferencias
-fetch('http://localhost:8000/conferences/')
-  .then((r) => r.json())
-  .then((data) => console.log('✅ Conexión OK:', data))
-  .catch((e) => console.error('❌ Error:', e))
+fetch('/api/health/users').then((r) => r.json()).then(console.log)
 ```
 
-## 🔐 Configurar Variables de Entorno
+## Configuración mínima
 
-### Backend (back-end/.env)
+### Raíz (Compose)
 
 ```env
-MONGODB_URI=mongodb://localhost:27017
-MONGODB_DB=produccion_db
-JWT_SECRET_KEY=change-this-secret-value
-JWT_ALGORITHM=HS256
-JWT_ACCESS_TOKEN_EXPIRES_MINUTES=60
-OTP_LENGTH=6
-OTP_EXPIRE_MINUTES=10
+JWT_SECRET_KEY=<mínimo 32 caracteres>
+RABBITMQ_URL=amqp://usuario:password@rabbitmq:5672/
 ```
 
-### Frontend (front-end/.env)
+### Frontend (`front-end/.env`)
 
 ```env
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=/api
+API_PROXY_TARGET=http://127.0.0.1:8080
+VITE_DEV_OTP_MAILBOX=true
 VITE_ENVIRONMENT=development
-VITE_API_TIMEOUT=30000
 ```
 
-## 🧪 Testear Endpoints
+> Dentro del contenedor `frontend`, Compose ya define `API_PROXY_TARGET=http://gateway:80`.
 
-### Swagger UI (Recomendado)
+## Probar auth con curl (vía gateway)
 
-1. Abrir `http://localhost:8000/docs`
-2. Click en "Authorize" (si es necesario)
-3. Probar endpoints directamente
-
-### Registro + Login
-
-#### 1. Registro (POST /auth/register)
+### 1. Registro
 
 ```bash
-curl -X POST "http://localhost:8000/auth/register" \
+curl -X POST "http://localhost:8080/api/auth/register" \
   -H "Content-Type: application/json" \
-  -d '{
-    "full_name": "Juan Test",
-    "email": "juan@test.com",
-    "password": "Test123!",
-    "role": "usuario_registrado"
-  }'
+  -d "{\"full_name\":\"Juan Test\",\"email\":\"juan@test.com\",\"password\":\"Test12345!\",\"role\":\"usuario_registrado\"}"
 ```
 
-**Respuesta esperada**:
+El OTP **no** viene en la respuesta JSON. En desarrollo:
 
-```json
-{
-  "message": "Usuario registrado. El código de verificación aparecerá en la terminal del backend.",
-  "email_sent": true,
-  "otp_id": "..."
-}
-```
+- Banner en http://localhost:5173/auth (`VITE_DEV_OTP_MAILBOX=true`), o
+- `curl "http://localhost:8080/api/notifications/dev/mailbox/latest?email=juan@test.com"`, o
+- Mailpit http://localhost:8025 si usas SMTP local.
 
-**En Terminal Backend**:
-
-```
-🔐 VERIFICACIÓN OTP - CONIITI CONFERENCE
-Para: juan@test.com
-Tu código: 123456
-```
-
-#### 2. Verificar OTP (POST /auth/verify-otp)
+### 2. Verificar OTP
 
 ```bash
-curl -X POST "http://localhost:8000/auth/verify-otp?email=juan@test.com&code=123456"
+curl -X POST "http://localhost:8080/api/auth/verify-otp?email=juan@test.com&code=123456"
 ```
 
-**Respuesta esperada**:
-
-```json
-{
-  "message": "OTP verificado exitosamente. ¡Bienvenido a CONIITI!"
-}
-```
-
-#### 3. Login (POST /auth/token)
+### 3. Login
 
 ```bash
-curl -X POST "http://localhost:8000/auth/token" \
+curl -X POST "http://localhost:8080/api/auth/token" \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "juan@test.com",
-    "password": "Test123!"
-  }'
+  -d "{\"email\":\"juan@test.com\",\"password\":\"Test12345!\"}"
 ```
 
-**Respuesta esperada**:
-
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
-
-#### 4. Usar Token (GET /auth/me)
+### 4. Perfil autenticado
 
 ```bash
-curl -X GET "http://localhost:8000/auth/me" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+curl http://localhost:8080/api/auth/me \
+  -H "Authorization: Bearer <access_token>"
 ```
 
-**Respuesta esperada**:
+## Flujos en el frontend
 
-```json
-{
-  "_id": "...",
-  "full_name": "Juan Test",
-  "email": "juan@test.com",
-  "role": "usuario_registrado",
-  "is_verified": true,
-  "is_active": true
-}
+### Registro + sesión automática
+
+```
+Auth.tsx → register() → POST /api/auth/register
+         → usuario ingresa OTP
+         → activateAccount() → verify-otp + login + /auth/me
+         → redirige a /student (sin volver a pantalla de login)
 ```
 
-### Testear Conferencias (Sin autenticación)
+### Login existente
+
+```
+Auth.tsx → login() → POST /api/auth/token → GET /api/auth/me
+         → redirige según rol (/dashboard o /student)
+```
+
+### Agenda estudiante
+
+```
+StudentPortal → apiClient.getConferences()
+              → apiClient.addToStudentAgenda(id)  → /api/student-agenda/...
+```
+
+Cliente HTTP centralizado: `front-end/src/lib/api.ts`.
+
+## Swagger / OpenAPI
+
+Cada microservicio expone `/docs` **solo dentro de la red Docker** (puertos no publicados al host en Compose por defecto). Para depurar:
 
 ```bash
-# Listar todas
-curl http://localhost:8000/conferences/
-
-# Resultado esperado: array vacío [] o lista de conferencias
+docker compose exec users-service curl -s http://127.0.0.1:8000/docs
 ```
 
-## 🔄 Flujos Principales
+La integración del front usa las rutas documentadas en el README y en `api.ts`, siempre con prefijo `/api` en el gateway.
 
-### Flujo 1: Registro
+## Troubleshooting
 
-```
-Frontend (Auth.tsx)
-├─ handleRegister() → apiClient.register(data)
-├─ Backend /auth/register
-│  ├─ Crear usuario en DB
-│  ├─ Generar OTP (6 dígitos)
-│  ├─ Imprimir en terminal ← VER CÓDIGO AQUÍ
-│  └─ Retorna otp_id
-├─ Frontend guarda email para siguiente paso
-└─ Usuario debe ingresar código de terminal
-```
+| Síntoma | Causa habitual | Solución |
+|---------|----------------|----------|
+| `ECONNREFUSED` en `/api` | Gateway o Compose parado | `docker compose up` |
+| 401 en rutas protegidas | Sin token o JWT distinto entre servicios | Mismo `JWT_SECRET_KEY` en todos los servicios |
+| CORS | Llamar a `:8080` desde `:5173` sin proxy | Usar `VITE_API_URL=/api` + proxy Vite |
+| OTP no visible | Modo prod o mailbox desactivado | `VITE_DEV_OTP_MAILBOX=true`, `NOTIFICATION_MODE=simulado` |
+| 404 en `/api/auth/...` | URL sin prefijo `/api` | `VITE_API_URL=/api` |
+| Registro OK pero sin email | notification-service caído | `docker compose logs notification-service` |
 
-### Flujo 2: Verificar OTP
+## Checklist
 
-```
-Frontend (Auth.tsx)
-├─ handleVerifyOTP() → apiClient.verifyOTP(email, code)
-├─ Backend /auth/verify-otp
-│  ├─ Busca OTP en DB
-│  ├─ Valida que no expiró
-│  ├─ Marca usuario como is_verified=true
-│  └─ Retorna éxito
-├─ Frontend redirige a login
-└─ Usuario puede hacer login
-```
+- [ ] `.env` raíz con `JWT_SECRET_KEY` seguro
+- [ ] `docker compose up` sin errores
+- [ ] `curl` a `/api/health/users` responde 200
+- [ ] Front en `:5173` con `VITE_API_URL=/api`
+- [ ] Registro + OTP + entrada automática al portal
+- [ ] Panel `/system-health` muestra servicios en verde
 
-### Flujo 3: Login
+## Más documentación
 
-```
-Frontend (Auth.tsx)
-├─ handleLogin() → apiClient.login(email, password)
-├─ Backend /auth/token
-│  ├─ Valida email/password
-│  ├─ Verifica is_verified=true
-│  ├─ Genera JWT token
-│  └─ Retorna access_token
-├─ Frontend guarda token con apiClient.setToken()
-├─ Frontend redirige según rol
-│  ├─ super_admin/web_master → /dashboard
-│  └─ usuario_registrado → /agenda
-└─ User authenticado ✅
-```
-
-### Flujo 4: Agregar a Agenda
-
-```
-Frontend (StudentPortal.tsx)
-├─ listaConferencias = await apiClient.getConferences()
-├─ markAgenda(conference_id) → apiClient.addToStudentAgenda(id)
-├─ Backend /student-agenda/{id}
-│  ├─ Valida usuario está autenticado
-│  ├─ Valida usuario_registrado role
-│  ├─ Valida capacidad si existe
-│  ├─ Crea inscripción en DB
-│  └─ Retorna éxito
-├─ Frontend recarga agenda
-└─ Conferencia aparece en agenda personal ✅
-```
-
-## 📝 Ejemplos de Uso en Frontend
-
-### Usar apiClient en un Componente
-
-```typescript
-import { apiClient, ApiError } from '@/lib/api'
-import { useEffect, useState } from 'react'
-
-export function MisConferencias() {
-  const [conferences, setConferences] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const cargarConferencias = async () => {
-      try {
-        const data = await apiClient.getConferences()
-        setConferences(data)
-      } catch (err) {
-        if (err instanceof ApiError) {
-          setError(err.message)
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    cargarConferencias()
-  }, [])
-
-  if (loading) return <p>Cargando...</p>
-  if (error) return <p>Error: {error}</p>
-
-  return (
-    <div>
-      {conferences.map(conf => (
-        <div key={conf._id}>
-          <h3>{conf.title}</h3>
-          <p>{conf.description}</p>
-        </div>
-      ))}
-    </div>
-  )
-}
-```
-
-### Uso con Autenticación
-
-```typescript
-import { apiClient } from '@/lib/api'
-
-export function Dashboard() {
-  const handleCrearConferencia = async () => {
-    try {
-      const nueva = await apiClient.createConference({
-        title: "Mi Conferencia",
-        description: "Descripción",
-        start_at: new Date().toISOString(),
-        end_at: new Date().toISOString(),
-        location: "Sala 1",
-        speakers: []
-      })
-      console.log('Creada:', nueva)
-    } catch (error) {
-      console.error('Error:', error)
-      // Mostrar toast de error
-    }
-  }
-
-  return <button onClick={handleCrearConferencia}>Crear</button>
-}
-```
-
-## 🐛 Troubleshooting
-
-### Error: "ECONNREFUSED 127.0.0.1:8000"
-
-**Causa**: Backend no está corriendo
-
-**Solución**:
-
-```bash
-cd back-end
-uvicorn app.main:app --reload
-```
-
-### Error: "401 Unauthorized"
-
-**Causa**: Token no enviado o expirado
-
-**Solución**:
-
-```typescript
-// Verificar token
-const token = apiClient.getToken()
-console.log('Token:', token)
-
-// Si no existe, hacer login nuevamente
-if (!token) {
-  await apiClient.login({ email, password })
-}
-```
-
-### Error: "CORS policy"
-
-**Causa**: Frontend en puerto diferente
-
-**Solución**: Backend tiene CORS configurado para localhost:3000 y localhost:5173
-
-Verificar `app/main.py`:
-
-```python
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://127.0.0.1",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",  # Vite
-]
-```
-
-### Error: "400 Bad Request" en /auth/verify-otp
-
-**Causa**: Parámetros query no enviados correctamente
-
-**Solución**: Usar apiClient.verifyOTP() que already maneja query params:
-
-```typescript
-// ❌ NO hacer esto:
-await apiClient.post('/auth/verify-otp', { email, code })
-
-// ✅ Hacer esto:
-await apiClient.verifyOTP(email, code)
-```
-
-### OTP no aparece en terminal backend
-
-**Causa**: Backend no está mostrando output
-
-**Solución**:
-
-```bash
-# Terminal del backend debe estar abierta y visible
-# El código aparece cuando el usuario se registra o pide reenvío
-# Formato: 6 dígitos entre bordes de caja de arte ASCII
-```
-
-### "Cannot read property 'getConferences'"
-
-**Causa**: apiClient no importado correctamente
-
-**Solución**:
-
-```typescript
-// Correcto
-import { apiClient } from '@/lib/api'
-
-// Incorrecto
-import apiClient from '@/lib/api'
-```
-
-## ✅ Checklist de Verificación
-
-- [ ] Backend corriendo en http://localhost:8000
-- [ ] Frontend corriendo en http://localhost:5173
-- [ ] .env configurado con VITE_API_URL
-- [ ] MongoDB activo
-- [ ] Puede acceder a http://localhost:8000/docs (Swagger)
-- [ ] GET /conferences/ retorna array (vacío o con datos)
-- [ ] Puede registrar usuario (OTP aparece en terminal backend)
-- [ ] Puede verificar OTP con código de terminal
-- [ ] Puede hacer login
-- [ ] Token se guarda en localStorage
-- [ ] GET /auth/me retorna usuario
-
-## 📚 Recursos Adicionales
-
-- [README Backend](./back-end/README.md) - Setup backend
-- [README Frontend](./front-end/README.md) - Setup frontend
-- [API Documentation](http://localhost:8000/docs) - Swagger UI
-- [TypeScript API Client](./front-end/src/lib/api.ts) - Tipos y métodos
-
-## 🎯 Próximos Pasos
-
-1. **Activar Auth en Frontend**:
-   - Modificar AuthContext para usar apiClient
-
-2. **Completar Pages**:
-   - StudentPortal: listar/agregar conferencias
-   - SuperAdminDashboard: CRUD completo
-   - Agenda: inscripciones a sesiones
-
-3. **Testing**:
-   - Tests unitarios de componentes
-   - Tests de integración API
-
-4. **Despliegue**:
-   - Build para producción
-   - Configurar variables de entorno real
-
----
-
-**¿Problemas?** Revisar los READMEs del backend y frontend para más detalles.
+- [README.md](README.md) — inicio rápido
+- [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)
+- [docs/VARIABLES_ENTORNO.md](docs/VARIABLES_ENTORNO.md)
+- [front-end/README.md](front-end/README.md)

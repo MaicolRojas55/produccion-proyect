@@ -158,7 +158,13 @@ docker compose up --build
 - Uptime: http://localhost:5173/system-health  
 - Mailpit (opcional): http://localhost:8025  
 
-Detalle ampliado en `README.md` e `INTEGRATION_GUIDE.md`.
+Detalle ampliado en:
+
+- [README.md](../README.md) — inicio rápido
+- [ARQUITECTURA.md](./ARQUITECTURA.md) — diseño y flujos
+- [VARIABLES_ENTORNO.md](./VARIABLES_ENTORNO.md) — configuración `.env`
+- [INTEGRATION_GUIDE.md](../INTEGRATION_GUIDE.md) — integración frontend/API
+- [GITFLOW.md](./GITFLOW.md) — ramas y CI/CD
 
 ---
 

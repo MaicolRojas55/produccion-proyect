@@ -2,6 +2,8 @@
 
 Este directorio implementa una arquitectura Kubernetes equivalente a `docker-compose.yml`, separando servicios stateless y stateful, con persistencia y punto unico de entrada.
 
+Documentación relacionada: [docs/ARQUITECTURA.md](../docs/ARQUITECTURA.md) · [docs/VARIABLES_ENTORNO.md](../docs/VARIABLES_ENTORNO.md)
+
 ## 1) Arquitectura propuesta
 
 - **Capa de entrada**
@@ -122,9 +124,12 @@ Flujo esperado:
 
 ```bash
 kubectl port-forward -n coniiti svc/gateway 8080:80
+curl http://localhost:8080/api/health/users
+curl http://localhost:8080/api/health/conferences
 curl http://localhost:8080/api/notifications/health
-curl http://localhost:8080/api/auth/me
 ```
+
+Panel web (si el frontend está desplegado): ruta `/system-health`.
 
 ### Prueba B - Registro y evento
 
