@@ -88,7 +88,10 @@ type AuthContextValue = {
   activateAccount: (input: {
     email: string
     otp: string
-  }) => Promise<{ ok: true } | { ok: false; reason: string }>
+    password: string
+  }) => Promise<
+    { ok: true; user: User } | { ok: false; reason: string }
+  >
   logout: () => void
 }
 
@@ -220,16 +223,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const activateAccount = useCallback(
     async ({
       email,
-      otp
+      otp,
+      password
     }: {
       email: string
       otp: string
-    }): Promise<{ ok: true } | { ok: false; reason: string }> => {
+      password: string
+    }): Promise<
+      { ok: true; user: User } | { ok: false; reason: string }
+    > => {
       try {
         setError(null)
         await apiClient.verifyOTP(email, otp)
-        // Ahora puede hacer login
-        return { ok: true }
+        await apiClient.login({ email, password })
+        const payload = await apiClient.getCurrentUser()
+        const currentUser = mapBackendUser(payload)
+        if (!currentUser) {
+          apiClient.logout()
+          return { ok: false, reason: 'Respuesta de usuario inválida' }
+        }
+        setUser(currentUser)
+        return { ok: true, user: currentUser }
       } catch (err) {
         const message =
           err instanceof ApiError ? err.message : 'Error verificando OTP'

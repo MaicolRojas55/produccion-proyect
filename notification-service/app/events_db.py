@@ -14,9 +14,12 @@ CREATE TABLE IF NOT EXISTS processed_events (
 
 
 async def init_db() -> None:
+    from .dev_mailbox import init_dev_mailbox_db
+
     async with aiosqlite.connect(configuracion.sqlite_path) as db:
         await db.execute(CREATE_SQL)
         await db.commit()
+    await init_dev_mailbox_db()
 
 
 async def insert_event(event_type: str, payload_json: str, processed_at: str) -> None:

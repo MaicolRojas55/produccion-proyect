@@ -1,3 +1,4 @@
+import os
 import smtplib
 import sys
 from email.mime.multipart import MIMEMultipart
@@ -7,6 +8,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .config import configuracion
+from .dev_mailbox import save_dev_mail
 from .models import RespuestaNotificacion, SolicitudNotificacion
 
 
@@ -52,16 +54,27 @@ class ServicioNotificaciones:
         )
         return asunto, html
 
+    def _smtp_usa_starttls(self) -> bool:
+        """Gmail usa 587+TLS; Mailpit local (1025) suele ir sin TLS."""
+        explicit = os.getenv("SMTP_USE_TLS", "").lower()
+        if explicit in ("0", "false", "no"):
+            return False
+        if explicit in ("1", "true", "yes"):
+            return True
+        return configuracion.puerto_smtp == 587
+
     def _enviar_smtp(self, email_destino: str, asunto: str, html: str) -> bool:
         """
-        Envía el email usando SMTP real (Gmail compatible con App Password).
-        Retorna True si fue exitoso, False si falló.
+        Envía el email por SMTP (Gmail, Mailpit u otro).
+        Mailpit no requiere usuario/contraseña ni STARTTLS en el puerto 1025.
         """
-        if not configuracion.usuario_smtp or not configuracion.contraseña_smtp:
+        tiene_credenciales = bool(
+            configuracion.usuario_smtp and configuracion.contraseña_smtp
+        )
+        if not tiene_credenciales and configuracion.puerto_smtp != 1025:
             print(
                 "[NotificationService] ERROR: SMTP_USERNAME o SMTP_PASSWORD no configurados.\n"
-                "Agrega las credenciales al archivo .env del notification-service.\n"
-                "Para Gmail: genera una App Password en myaccount.google.com/security",
+                "Para Gmail usa App Password. Para Mailpit local: SMTP_PORT=1025 sin credenciales.",
                 file=sys.stderr,
                 flush=True,
             )
@@ -76,8 +89,11 @@ class ServicioNotificaciones:
 
             with smtplib.SMTP(configuracion.servidor_smtp, configuracion.puerto_smtp, timeout=10) as server:
                 server.ehlo()
-                server.starttls()
-                server.login(configuracion.usuario_smtp, configuracion.contraseña_smtp)
+                if self._smtp_usa_starttls():
+                    server.starttls()
+                    server.ehlo()
+                if tiene_credenciales:
+                    server.login(configuracion.usuario_smtp, configuracion.contraseña_smtp)
                 server.sendmail(configuracion.email_remitente, email_destino, msg.as_string())
 
             print(f"[NotificationService] Email enviado a {email_destino} | Asunto: {asunto}", flush=True)
@@ -99,6 +115,29 @@ class ServicioNotificaciones:
             print(f"[NotificationService] ERROR inesperado: {e}", file=sys.stderr, flush=True)
             return False
 
+    async def _guardar_en_bandeja_dev(
+        self, solicitud: SolicitudNotificacion, asunto: str
+    ) -> None:
+        if not configuracion.dev_mailbox_enabled or solicitud.tipo != "otp":
+            return
+        otp_code = str(solicitud.datos.get("otp_code") or "").strip()
+        if not otp_code:
+            return
+        expire_minutes = solicitud.datos.get("expire_minutes")
+        expires_at = None
+        if expire_minutes is not None:
+            from datetime import datetime, timedelta
+
+            expires_at = (
+                datetime.utcnow() + timedelta(minutes=int(expire_minutes))
+            ).isoformat()
+        await save_dev_mail(
+            email=str(solicitud.email_destino),
+            otp_code=otp_code,
+            subject=asunto,
+            expires_at=expires_at,
+        )
+
     async def enviar_notificacion(self, solicitud: SolicitudNotificacion) -> RespuestaNotificacion:
         """Renderiza la notificacion y la envia segun el modo configurado."""
         asunto, html = self._renderizar_html(solicitud)
@@ -111,6 +150,7 @@ class ServicioNotificaciones:
             print(f"Asunto: {asunto}", file=sys.stdout, flush=True)
             print(html, file=sys.stdout, flush=True)
             print("=" * 80, file=sys.stdout, flush=True)
+            await self._guardar_en_bandeja_dev(solicitud, asunto)
             return RespuestaNotificacion(
                 enviada=True,
                 tipo=solicitud.tipo,

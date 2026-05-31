@@ -17,6 +17,8 @@ import WebMasterDashboard from './pages/WebMasterDashboard'
 import StudentPortal from './pages/StudentPortal'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import Conferencistas from './pages/Conferencistas'
+import DevMailbox from './pages/DevMailbox'
+import SystemHealth from './pages/SystemHealth'
 
 const queryClient = new QueryClient()
 
@@ -24,6 +26,8 @@ const router = createBrowserRouter(
   [
     { path: '/', element: <Index /> },
     { path: '/auth', element: <Auth /> },
+    { path: '/dev/mailbox', element: <DevMailbox /> },
+    { path: '/system-health', element: <SystemHealth /> },
     { path: '/agenda', element: <Agenda /> },
     { path: '/conferencistas', element: <Conferencistas /> },
     {

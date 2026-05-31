@@ -9,24 +9,28 @@ Solución:
 - Se manejan: user.registered → OTP email, user.otp_resent → OTP email de reenvío
 """
 
-import logging
 import asyncio
 import json
+import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import EmailStr
 
 from .email import servicio_notificaciones
-from .models import RespuestaNotificacion, SolicitudNotificacion
+from .dev_mailbox import get_latest_dev_mail, list_recent_dev_mail
+from .models import DevMailboxEntry, RespuestaNotificacion, SolicitudNotificacion
 from .config import configuracion
 from .events_db import init_db, insert_event, count_events
+from .structured_logging import setup_structured_logging
 
 import aio_pika
 
+setup_structured_logging("notification-service", os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 async def _procesar_evento(event_type: str, payload: dict) -> None:
@@ -187,3 +191,31 @@ async def notificar(solicitud: SolicitudNotificacion) -> RespuestaNotificacion:
         resultado.enviada,
     )
     return resultado
+
+
+def _require_dev_mailbox() -> None:
+    if not configuracion.dev_mailbox_enabled:
+        raise HTTPException(
+            status_code=404,
+            detail="Bandeja de desarrollo deshabilitada",
+        )
+
+
+@app.get("/dev/mailbox/latest", response_model=DevMailboxEntry)
+async def obtener_ultimo_correo_dev(email: EmailStr = Query(..., description="Email del destinatario")):
+    """Último OTP simulado para un correo (solo desarrollo)."""
+    _require_dev_mailbox()
+    entry = await get_latest_dev_mail(str(email))
+    if not entry:
+        raise HTTPException(status_code=404, detail="No hay OTP para este correo")
+    return DevMailboxEntry(**entry)
+
+
+@app.get("/dev/mailbox/recent", response_model=list[DevMailboxEntry])
+async def listar_correos_dev_recientes(
+    limit: int = Query(20, ge=1, le=50, description="Cantidad máxima de registros"),
+):
+    """Lista reciente de OTP simulados (solo desarrollo)."""
+    _require_dev_mailbox()
+    rows = await list_recent_dev_mail(limit=limit)
+    return [DevMailboxEntry(**row) for row in rows]
