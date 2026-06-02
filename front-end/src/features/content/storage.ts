@@ -63,7 +63,7 @@ const DEFAULT_CONTENT: HomeContent = {
     mapUrl: "https://www.google.com/maps/embed/v1"
   },
   galleryImages: [
-    { url: "/gallery-conference.jpg", alt: "Conferencia - Auditorio lleno con público", span: "md:col-span-2 md:row-span-2" },
+    { url: "/conferencia debate.webp", alt: "Conferencia - Auditorio lleno con público", span: "md:col-span-2 md:row-span-2" },
     { url: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?q=80&w=1400&auto=format&fit=crop", alt: "Taller - Personas trabajando en taller", span: "md:col-span-1" },
     { url: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1400&auto=format&fit=crop", alt: "Networking - Interacción minimalista", span: "md:col-span-1" },
     { url: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=1400&auto=format&fit=crop", alt: "Panel - Debate y panelistas", span: "md:col-span-2" }

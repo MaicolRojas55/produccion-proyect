@@ -587,7 +587,7 @@ const Index = () => {
                     }
                   }}
                 />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                   <span className="text-white font-medium">{img.alt}</span>
                 </div>
               </div>
