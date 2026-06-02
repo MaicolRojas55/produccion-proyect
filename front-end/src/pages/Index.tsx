@@ -114,6 +114,46 @@ const Index = () => {
   const isCenteredCarousel = content.conferencistas.length < 8
   const hasCarouselNav = content.conferencistas.length >= 8
 
+  // Helper to map country display name to ISO code for flag CDN
+  const getCountryCode = (name?: string) => {
+    if (!name) return 'es'
+    const key = name.toLowerCase()
+    const map: Record<string, string> = {
+      'españa': 'es',
+      'spain': 'es',
+      'reino unido': 'gb',
+      'united kingdom': 'gb',
+      'estados unidos': 'us',
+      'united states': 'us',
+      'brasil': 'br',
+      'brazil': 'br'
+    }
+    return map[key] || 'es'
+  }
+
+
+  const featuredName = content.featuredCountry?.name || 'España'
+  const featuredFlagRaw = content.featuredCountry?.flag || ''
+  let featuredFlagUrl = ''
+  if (featuredFlagRaw.startsWith('http') || featuredFlagRaw.startsWith('/')) {
+    featuredFlagUrl = featuredFlagRaw
+  } else {
+    const code = getCountryCode(featuredName)
+    featuredFlagUrl = `https://flagcdn.com/w1600/${code}.jpg`
+  }
+
+  const [featuredBg, setFeaturedBg] = useState<string>('')
+
+  useEffect(() => {
+    // Try local first, fallback to Unsplash if missing
+    const local = '/plaza-de-espana.jpg'
+    const remote = "https://source.unsplash.com/1600x900/?plaza%20de%20espana"
+    const img = new Image()
+    img.onload = () => setFeaturedBg(local)
+    img.onerror = () => setFeaturedBg(remote)
+    img.src = local
+  }, [])
+
   // Scroll al apartado cuando la URL tiene hash (ej. /#comite, /#memorias, /#memorias-1)
   useEffect(() => {
     const hash = window.location.hash.slice(1)
@@ -149,10 +189,16 @@ const Index = () => {
 
       {/* ===== HERO ===== */}
       <section id="hero" className="relative overflow-hidden">
-        {/* Base gradient */}
-        <div className="absolute inset-0 bg-[var(--gradient-hero)]" />
-        <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_20%_10%,hsl(var(--gold))_0%,transparent_45%),radial-gradient(circle_at_80%_30%,hsl(var(--sky))_0%,transparent_45%),radial-gradient(circle_at_50%_100%,hsl(var(--navy-light))_0%,transparent_55%)]" />
-        <div className="absolute inset-0 bg-navy-dark/55" />
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('/imagenes/plaza.webp')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        />
 
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-12 md:pt-24 md:pb-16">
           <div className="text-center">
@@ -203,66 +249,51 @@ const Index = () => {
         {/* ===== FEATURED COUNTRY — Rich glassmorphism bar ===== */}
         <EditCountryModal>
           <div className="relative z-10 mt-6">
-            {/* Decorative gradient line */}
-            <div className="h-px bg-gradient-to-r from-transparent via-purple-400/60 to-transparent" />
-            <div className="bg-gradient-to-r from-purple-900/60 via-blue-900/50 to-purple-900/60 backdrop-blur-md border-t border-white/10">
-              <div className="container mx-auto px-4 py-8">
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                  {/* Flag + Name */}
-                  <div className="flex items-center gap-6 shrink-0">
-                    <div className="relative">
-                      <div className="absolute -inset-3 rounded-full bg-purple-500/20 blur-xl" />
-                      <span
-                        className="relative text-7xl md:text-8xl drop-shadow-2xl"
-                        aria-label={`Bandera de ${content.featuredCountry?.name}`}
-                      >
-                        {content.featuredCountry?.flag || '🇪🇸'}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-yellow-400/80 uppercase tracking-[0.2em] mb-1 flex items-center gap-1.5">
-                        <span className="inline-block w-4 h-px bg-yellow-400/60" />
-                        País Invitado de Honor
-                        <span className="inline-block w-4 h-px bg-yellow-400/60" />
-                      </p>
-                      <h2 className="text-4xl md:text-5xl font-heading font-black text-white tracking-tight">
-                        {content.featuredCountry?.name || 'España'}
-                      </h2>
-                    </div>
+            <div className="container mx-auto px-4 py-0">
+              <div
+                className="relative backdrop-blur-md border border-white/6 overflow-hidden rounded-lg bg-cover bg-center"
+                style={{ backgroundImage: `url('${featuredBg}')` }}
+              >
+                <div className="absolute inset-0 bg-black/45" />
+                <div className="md:flex md:items-stretch relative z-10">
+                  {/* Left: flag (half) */}
+                  <div className="w-full md:w-1/2">
+                    <img
+                      src={featuredFlagUrl}
+                      alt={`Bandera de ${featuredName}`}
+                      className="w-full h-44 md:h-full object-cover"
+                    />
                   </div>
 
-                  {/* Divider */}
-                  <div className="hidden md:block w-px h-20 bg-white/15 self-center" />
-
-                  {/* Description */}
-                  <div className="flex-1 text-center md:text-left">
-                    <p className="text-white/80 text-base md:text-lg leading-relaxed max-w-xl">
+                  {/* Right: content */}
+                  <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-center">
+                    <p className="text-xs font-bold text-yellow-400/80 uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
+                      <span className="inline-block w-4 h-px bg-yellow-400/60" />
+                      País Invitado de Honor
+                      <span className="inline-block w-4 h-px bg-yellow-400/60" />
+                    </p>
+                    <h2 className="text-3xl md:text-4xl font-heading font-black text-white tracking-tight mb-3">
+                      {featuredName}
+                    </h2>
+                    <p className="text-white/80 text-sm md:text-base leading-relaxed max-w-md mb-4">
                       {content.featuredCountry?.description ||
                         'País invitado con destacados investigadores y conferencistas líderes en tecnología e innovación.'}
                     </p>
-                  </div>
-
-                  {/* Stat chips */}
-                  <div className="flex md:flex-col gap-3 shrink-0">
-                    <div className="bg-white/10 border border-white/15 rounded-xl px-4 py-2 text-center">
-                      <div className="text-2xl font-black text-yellow-300">
-                        4
+                    <div className="flex gap-3">
+                      <div className="bg-white/10 border border-white/15 rounded-xl px-4 py-2 text-center">
+                        <div className="text-2xl font-black text-yellow-300">4</div>
+                        <div className="text-xs text-white/60">Conferencistas</div>
                       </div>
-                      <div className="text-xs text-white/60">
-                        Conferencistas
+                      <div className="bg-white/10 border border-white/15 rounded-xl px-4 py-2 text-center">
+                        <div className="text-2xl font-black text-purple-300">3+</div>
+                        <div className="text-xs text-white/60">Universidades</div>
                       </div>
-                    </div>
-                    <div className="bg-white/10 border border-white/15 rounded-xl px-4 py-2 text-center">
-                      <div className="text-2xl font-black text-purple-300">
-                        3+
-                      </div>
-                      <div className="text-xs text-white/60">Universidades</div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent" />
+            <div className="h-px bg-gradient-to-r from-transparent via-blue-400/40 to-transparent mt-4" />
           </div>
         </EditCountryModal>
       </section>
@@ -324,22 +355,27 @@ const Index = () => {
       </section>
 
       {/* Impacto */}
-      <section className="bg-muted/40 border-y border-border py-12 md:py-16">
+      <section className="py-12 md:py-16 scroll-mt-20">
         <div className="container mx-auto px-4">
-          <h2 className="font-heading font-black text-2xl md:text-3xl text-foreground text-center mb-10">
-            Impacto X CONIITI 2024
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            {impact.map(({ value, label }) => (
-              <div key={label} className="text-center">
-                <div className="font-heading font-black text-4xl md:text-5xl text-primary">
-                  {value}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {label}
-                </div>
+          <div className="mx-auto max-w-3xl">
+            <div className="border-2 border-white/10 rounded-xl bg-gradient-to-r from-white/5 to-white/3 p-6 md:p-8 shadow-lg">
+              <h2 className="font-heading font-black text-2xl md:text-3xl text-foreground mb-4 text-center">
+                Impacto X CONIITI 2024
+              </h2>
+
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                {impact.map(({ value, label }) => (
+                  <div key={label} className="px-2">
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-5 text-center">
+                      <div className="font-heading font-black text-3xl md:text-4xl text-primary">
+                        {value}
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-1">{label}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
@@ -447,7 +483,15 @@ const Index = () => {
                         : 'shrink-0 w-56'
                     }`}
                   >
-                    <Card className="p-5 text-center flex flex-col h-full bg-white border-2 border-transparent hover:border-purple-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                    <Card className="relative overflow-hidden p-5 text-center flex flex-col h-full bg-white border-2 border-transparent hover:border-purple-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                      {/* Flag background */}
+                      <img
+                        src={`https://flagcdn.com/w320/${getCountryCode(s.country)}.png`}
+                        alt={`Bandera de ${s.country || ''}`}
+                        className="absolute inset-0 w-full h-full object-cover opacity-40"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-white/80 to-transparent" />
+
                       <div className="relative mx-auto mb-4 w-20 h-20 overflow-hidden rounded-full border-4 border-purple-100 group-hover:border-purple-400 transition-all duration-300">
                         <img
                           src={
@@ -530,6 +574,18 @@ const Index = () => {
                   src={img.url}
                   alt={img.alt}
                   className="w-full h-full object-cover aspect-square transition-transform duration-500 group-hover:scale-110"
+                  onError={(e) => {
+                    const el = e.currentTarget as HTMLImageElement
+                    if (el.dataset.fallbacked) return
+                    el.dataset.fallbacked = '1'
+                    const src = el.src || ''
+                    // Try replacing common raster extensions with the existing svg fallback
+                    if (/\.(jpe?g|webp)$/i.test(src)) {
+                      el.src = src.replace(/\.(jpe?g|webp)$/i, '.svg')
+                    } else {
+                      el.src = '/placeholder.svg'
+                    }
+                  }}
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                   <span className="text-white font-medium">{img.alt}</span>

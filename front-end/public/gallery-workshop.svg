@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <rect width="100%" height="100%" fill="#f8fafc" />
+  <g fill="#0f172a" opacity="0.95">
+    <rect x="80" y="140" width="1240" height="580" rx="14" fill="#111827" opacity="0.06" />
+    <!-- tables -->
+    <g transform="translate(180,220)" fill="#0f172a">
+      <rect x="0" y="0" width="220" height="120" rx="8" fill="#e6eef6" />
+      <rect x="260" y="0" width="220" height="120" rx="8" fill="#eef2ff" />
+      <rect x="520" y="0" width="220" height="120" rx="8" fill="#e6eef6" />
+      <rect x="780" y="0" width="220" height="120" rx="8" fill="#eef2ff" />
+    </g>
+    <!-- small people circles -->
+    <g transform="translate(200,270)" fill="#0b1220">
+      <circle cx="30" cy="30" r="18" fill="#111827"/>
+      <circle cx="90" cy="30" r="18" fill="#111827"/>
+      <circle cx="30" cy="80" r="18" fill="#111827"/>
+      <circle cx="90" cy="80" r="18" fill="#111827"/>
+    </g>
+  </g>
+  <text x="120" y="110" fill="#0f172a" font-size="36" font-family="Arial, Helvetica, sans-serif">Taller - Personas trabajando en taller</text>
+</svg>

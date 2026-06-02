@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 
 export interface DateItem { id: string; label: string; date: string; icon: string; }
-export interface SpeakerItem { id: string; name: string; role: string; img: string; bio: string; track: string; }
+export interface SpeakerItem { id: string; name: string; role: string; img: string; bio: string; track: string; country?: string }
 export interface MemoryItem { id: string; year: string; title: string; desc: string; }
 export interface AuthorItem { id: string; name: string; paper: string; }
 export interface ContactInfo { address: string; email: string; phone: string; mapUrl: string; }
@@ -9,6 +9,7 @@ export interface ContactInfo { address: string; email: string; phone: string; ma
 export interface HomeContent {
   heroSubtitle: string;
   heroNotice: string;
+  heroImage?: string;
   featuredCountry: { name: string; flag: string; description: string };
   comite: { title: string; description: string; members: string[] };
   fechasImportantes: DateItem[];
@@ -23,6 +24,7 @@ export interface HomeContent {
 const DEFAULT_CONTENT: HomeContent = {
   heroSubtitle: "El Congreso Internacional e-Commerce e Impacto con Inteligencia Emocional e Innovación de TI",
   heroNotice: "Participa de conferencias, talleres y red de contactos líder en innovación tecnológica y negocios digitales.",
+  heroImage: '/hero-coniiti.jpg',
   featuredCountry: {
     name: "España",
     flag: "🇪🇸",
@@ -43,8 +45,9 @@ const DEFAULT_CONTENT: HomeContent = {
     { id: "2", year: "2022", title: "IA Generativa Temprana", desc: "El inicio de la explosión web AI." },
   ],
   conferencistas: [
-    { id: "1", name: "Dr. Alan Turing", role: "Keynote Speaker", img: "/placeholder.jpg", bio: "Experto en ciencias de computación e inteligencia artificial.", track: "Main Track" },
-    { id: "2", name: "Grace Hopper", role: "Workshop Lead", img: "/placeholder.jpg", bio: "Pionera en compiladores.", track: "Tech Track" }
+    { id: "1", name: "Dr. Alan Turing", role: "Keynote Speaker", img: "/placeholder.jpg", bio: "Experto en ciencias de computación e inteligencia artificial.", track: "Main Track", country: "United Kingdom" },
+    { id: "2", name: "Grace Hopper", role: "Workshop Lead", img: "/placeholder.jpg", bio: "Pionera en compiladores.", track: "Tech Track", country: "United States" },
+    { id: "3", name: "Prof. Maria Silva", role: "Keynote Speaker", img: "/placeholder.jpg", bio: "Investigadora en e-commerce y datos.", track: "Regional Track", country: "Brazil" }
   ],
   autores: [
     { id: "1", name: "Ricardo Fuentes", paper: "Arquitecturas Hexagonales en React" },
@@ -60,10 +63,10 @@ const DEFAULT_CONTENT: HomeContent = {
     mapUrl: "https://www.google.com/maps/embed/v1"
   },
   galleryImages: [
-    { url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87", alt: "Conferencia", span: "md:col-span-2 md:row-span-2" },
-    { url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87", alt: "Panel" },
-    { url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87", alt: "Networking" },
-    { url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87", alt: "Taller", span: "md:col-span-2" }
+    { url: "/gallery-conference.jpg", alt: "Conferencia - Auditorio lleno con público", span: "md:col-span-2 md:row-span-2" },
+    { url: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?q=80&w=1400&auto=format&fit=crop", alt: "Taller - Personas trabajando en taller", span: "md:col-span-1" },
+    { url: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1400&auto=format&fit=crop", alt: "Networking - Interacción minimalista", span: "md:col-span-1" },
+    { url: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=1400&auto=format&fit=crop", alt: "Panel - Debate y panelistas", span: "md:col-span-2" }
   ]
 };
 
