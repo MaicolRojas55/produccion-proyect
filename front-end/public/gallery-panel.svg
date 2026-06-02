@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <rect width="100%" height="100%" fill="#0b1220" />
+  <g fill="#fff" opacity="0.95">
+    <!-- stage and table -->
+    <rect x="200" y="220" width="1000" height="220" rx="10" fill="#111827" opacity="0.7" />
+    <rect x="260" y="260" width="360" height="140" rx="8" fill="#1f2937" />
+    <rect x="540" y="260" width="360" height="140" rx="8" fill="#1f2937" />
+    <rect x="820" y="260" width="360" height="140" rx="8" fill="#1f2937" />
+    <!-- audience as dots -->
+    <g transform="translate(240,520)" fill="#cbd5e1">
+      <circle cx="0" cy="0" r="6" />
+      <circle cx="30" cy="0" r="6" />
+      <circle cx="60" cy="0" r="6" />
+      <circle cx="90" cy="0" r="6" />
+      <circle cx="120" cy="0" r="6" />
+    </g>
+  </g>
+  <text x="120" y="110" fill="#fff" font-size="36" font-family="Arial, Helvetica, sans-serif">Panel - Debate y panelistas</text>
+</svg>
